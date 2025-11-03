@@ -83,7 +83,7 @@ def parse_samples(samples_file):
         
         (sample, *_) = split_line
 
-        if not sample.startswith("HG") or sample.startswith("NA"):
+        if not (sample.startswith("HG") or sample.startswith("NA")):
             logger.error("Samples file %s has bad line (not 9 tab-separated fields): %s",
                          samples_file, line)
             raise Exception("Bad line in the samples file")
