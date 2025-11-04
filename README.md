@@ -1,12 +1,12 @@
 > Elixir BioHackathon November 3-7, 2025
 
-# Elixir-BH-2025
+# Haploblock_Clusters_ElixirBH25
 
 # How to use this repo
 
 ```
-git clone https://github.com/jedrzejkubica/Elixir-BH-2025.git
-cd Elixir-BH-2025
+git clone https://github.com/jedrzejkubica/Haploblock_Clusters_ElixirBH25.git
+cd Haploblock_Clusters_ElixirBH25
 ```
 
 # Data
@@ -165,6 +165,8 @@ The number of peaks found with different sigma:
 python haploblock_boundaries.py --recombination_file data/Halldorsson2019/aau1043_datas3 --chr chr6 > data/haploblock_boundaries_chr6.tsv
 ```
 
+This creates a TSV file (with header) with 2 columns: START END
+
 See [haploblock_boundaries_chr6.tsv](data/haploblock_boundaries_chr6.tsv) for 1398 haploblock boundaries (high recombination rates defined as **rate > 10*average**).
 
 #### 2. Generate haploblock phased fasta files (1000Genomes phased VCF -> Haploblock phased VCFs -> Phased fasta files):
@@ -186,14 +188,14 @@ NOTE: VCF file has "6" instead of "chr6", which is required by bcftools consensu
 
 Then it generates a consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref).
 
-We also calculate the mean and average of the number of variants per haploblock, they are saved in --variant_counts_file.
+We also calculate the mean and average of the number of variants per haploblock, they are saved in --variant_counts_file (with 4 columns: START, END, MEAN, STDEV)
 
-NOTE: We previously generated haploblock phased sequences, e.g., `NA18531_chr6_region_711055-761032_hap1.fa` with headers like ">chr6:711055-761032", but each sequence in the merged fasta file must have a unique header, this can be done with:
+We previously generated haploblock phased sequences, e.g., `NA18531_chr6_region_711055-761032_hap1.fa` with headers like ">chr6:711055-761032", but each sequence in the merged fasta file must have a unique header. We do this and generate one merged phased fasta file per haploblock:
 ```
 mkdir data/CHB/haploblock_phased_seq_random5
 mv data/CHB/NA* data/CHB/haploblock_phased_seq_random5/.  ## or HG* for GBR/PUR
 
-# generate one haploblock phased fasta file
+# generate one merged phased fasta file per haploblock
 mkdir data/CHB/haploblock_phased_seq_random5/haploblock_phased_seq_merged
 ./merge_fasta_per_region.sh data/CHB/haploblock_phased_seq_random5 data/CHB/haploblock_phased_seq_random5/haploblock_phased_seq_merged
 tar -zcvf data/CHB/haploblock_phased_seq_random5/CHB_haploblock_phased_seq_merged.tar.gz data/CHB/haploblock_phased_seq_random5/haploblock_phased_seq_merged
@@ -206,26 +208,24 @@ We generated haploblock phased sequences (format: sample_chr_region_start-end_ha
 + haploblock phased sequences for TNFa for all populations
 
 
-#### 3. Population-specific haploblock alignments ?
+#### 3. Haploblock clusters
 
-We use TWILIGHT (https://github.com/TurakhiaLab/TWILIGHT), it requires one fasta file with haploblock phased sequences
+MMSeqs2
 ```
-snakemake --cores 8 --config TYPE=n SEQ=/home/shadeform/Elixir-BH-2025/data/haploblock_phased_seq_random5/CHB_chr6_random10_merged.fa OUT=CHB_chr6_random5.aln
+mkdir -p data/clusters/tmp
 ```
 
-see CHB_chr6_random5.aln
+```
+python clusters.py --boundaries_file data/haploblock_boundaries_chr6_TNFa.tsv --merged_consensus_dir data/CHB/haploblock_phased_seq_TNFa/haploblock_phased_seq_merged --variant_counts data/CHB/TNFa_CHB_variant_counts.tsv --chr 6 --out data/clusters/ --temp_dir data/clusters/tmp/
+```
 
-
-#### 4. Population-specific haploblock clusters
-
-TBD
-
+see `chr6_31480875-31598421_cluster.tsv`
 
 # Dependencies
 
 Install samtools, bcftools, htslib (https://www.htslib.org/), all must be simlinked in `/usr/bin`. See [install_dependencies.txt](install_dependencies.txt).
 
-Install TWILIGHT (https://github.com/TurakhiaLab/TWILIGHT)
+Install MMSeqs2 (https://github.com/soedinglab/MMseqs2)
 
 ## Python environment
 
