@@ -16,3 +16,4 @@ data/Halldorsson2019/*
 mmseq2-exploration/data/*
 mmseq2-exploration/job-scripts/job-outs/*
 mmseq2-exploration/results/*
+mmseq2-exploration/*.tar.gz
