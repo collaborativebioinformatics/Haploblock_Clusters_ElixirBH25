@@ -177,7 +177,7 @@ python haploblock_phased_sequences.py \
     --chr_map data/chr_map \
     --chr 6 \
     --out data/CHB/ \
-    --mmseq_params_file data/CHB/mmseq2_params.tsv
+    --variant_counts_file data/CHB/variant_counts.tsv
 ```
 
 This script uses bcftools and bgzip to extract regions corresponding to haploblock boundaries (--boundaries_file) from a population VCF file (--vcf).
@@ -186,7 +186,7 @@ NOTE: VCF file has "6" instead of "chr6", which is required by bcftools consensu
 
 Then it generates a consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref).
 
-We also calculate min identity per haploblock for MMSeq2 clustering, they will be saved in --mmseq_params_file.
+We also calculate the mean and average of the number of variants per haploblock, they are saved in --variant_counts_file.
 
 NOTE: We previously generated haploblock phased sequences, e.g., `NA18531_chr6_region_711055-761032_hap1.fa` with headers like ">chr6:711055-761032", but each sequence in the merged fasta file must have a unique header, this can be done with:
 ```

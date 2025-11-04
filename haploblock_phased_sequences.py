@@ -4,6 +4,8 @@ import logging
 import argparse
 import pathlib
 
+import numpy
+
 
 # set up logger, using inherited config, in case we get called as a module
 logger = logging.getLogger(__name__)
@@ -204,6 +206,47 @@ def extract_sample_from_vcf(vcf, sample, out):
     return(pathlib.Path(output_vcf))
 
 
+def count_variants(vcf):
+    """
+    Count the number of variants in the vcf file
+    """
+    # extract genotype (GT) strings
+    GTs = subprocess.run(["bcftools", "query",
+                          "-f", "[ %GT]",
+                          vcf],
+                          capture_output=True,
+                          text=True,
+                          check=True)
+
+    count_0 = 0  # left haplotype
+    count_1 = 0  # right haplotype
+
+    for line in GTs.stdout.splitlines():
+        line = line.strip()
+        if not line or line == "." or line == "./." or line == ".|.":
+            continue  # skip missing genotypes
+
+        # Handle phased and unphased cases
+        if "|" in line:
+            parts = line.split("|")
+        elif "/" in line:
+            parts = line.split("/")
+        else:
+            continue  # skip malformed entries
+
+        if len(parts) != 2:
+            continue  # unexpected format, skip
+
+        (left, right) = parts
+
+        if left == "1":
+            count_0 += 1
+        if right == "1":
+            count_1 += 1
+
+    return(count_0, count_1)
+
+
 def extract_region_from_fasta(fasta, chr, start, end, out):
     """
     Extract a specific region from a fasta file
@@ -259,41 +302,23 @@ def generate_consensus_fasta(fasta, vcf, out):
     return(output_hap1, output_hap2)
 
 
-def calculate_mmseq_params(start, end, region_vcf):
+def save_haploblock_variant_counts(haploblock2count, out_file):
     """
-    Calculate parameters for MMSeq2 clustering: min identity
-    
     arguments:
-    - start: int start position of haploblock
-    - end: int end position of haploblock
-    - region_vcf: pathlib.Path to VCF file corresponding to the region
-
-    returns:
-    - min_id: float, min identity
+    - haploblock2count: dict, key=(start, end), value=[mean, stdev]
     """
-    # count number of variants in the region
-    num_variants = int(subprocess.run(["bcftools", "view",
-                                       "-H",
-                                       region_vcf],
-                                       check=True,
-                                       capture_output=True,
-                                       text=True).stdout.count('\n'))
-
-    haploblock_length = int(end) - int(start)
-    min_id = 1 - (num_variants / haploblock_length)
-
-    return(min_id)
-
-
-def save_mmseq_params(haploblock2min_id, out_file):
     with open(out_file, 'w') as f:
         # header
-        f.write("START\tEND\tMIN_ID\n")
-        for (start, end) in haploblock2min_id:
-            f.write(str(start) + "\t" + str(end) + "\t" + str(haploblock2min_id[(start, end)]) + "\n")
+        f.write("START\tEND\tMEAN\tSTDEV\n")
+        for (start, end) in haploblock2count:
+            # mean and stdev in scientific notation with 3 significant digits
+            mean = "{:.3g}".format(haploblock2count[(start, end)][0])
+            stdev = "{:.3g}".format(haploblock2count[(start, end)][1])
+            
+            f.write(str(start) + "\t" + str(end) + "\t" + str(mean) + "\t" + str(stdev) + "\n")
 
 
-def main(boundaries_file, samples_file, vcf, ref, chr_map, chr, out, mmseq_params_file):
+def main(boundaries_file, samples_file, vcf, ref, chr_map, chr, out, variant_counts_file):
     # sanity check
     if not os.path.exists(boundaries_file):
         logger.error(f"File {boundaries_file} does not exist.")
@@ -316,31 +341,42 @@ def main(boundaries_file, samples_file, vcf, ref, chr_map, chr, out, mmseq_param
     logger.info("Found %i haploblock boundaries", len(haploblock_boundaries))
 
     logger.info("Parsing samples")
-    # samples = parse_samples(samples_file)
-    samples = parse_samples_from_vcf(vcf)
+    samples = parse_samples(samples_file)
+    # samples = parse_samples_from_vcf(vcf)
     logger.info("Found %i samples", len(samples))
 
-    # dict for MMSeq2 params
-    haploblock2min_id = {}
+    # dict for variant counts, key=(start, end), value=list(mean, stdev)
+    haploblock2count = {}
 
     for (start, end) in haploblock_boundaries:
         logger.info(f"Generating phased VCF for haploblock {start}-{end}")
         region_vcf = extract_region_from_vcf(vcf, chr, chr_map, start, end, out)
 
-        # calculate 
-        haploblock2min_id[(start, end)] = calculate_mmseq_params(start, end, region_vcf)
-
         logger.info(f"Generating phased fasta for haploblock {start}-{end}")
         region_fasta = extract_region_from_fasta(ref, chr, start, end, out)
 
-        logger.info(f"Generating consensus fastas for haploblock {start}-{end}")
+        # list for the number variants (separate for each haplotype)
+        haploblock_counts = []
+
+        logger.info(f"Generating consensus fasta files for haploblock {start}-{end}")
         for sample in samples:
             # logger.info(f"Generating phased VCF for haploblock {start}-{end} for sample %s", sample)
             sample_vcf = extract_sample_from_vcf(region_vcf, sample, out)
 
+            # calculate of the number variants
+            (count_0, count_1) = count_variants(sample_vcf)
+            haploblock_counts.append(count_0)
+            haploblock_counts.append(count_1)
+
             (sample_hap1, sample_hap2) = generate_consensus_fasta(region_fasta, sample_vcf, out)
+
+        # calculate mean and stdev of the number variants
+        mean = sum(haploblock_counts) / len(haploblock_counts)
+        stdev = numpy.std(haploblock_counts)
+
+        haploblock2count[(start, end)] = [mean, stdev]
     
-    save_mmseq_params(haploblock2min_id, mmseq_params_file)
+    save_haploblock_variant_counts(haploblock2count, variant_counts_file)
 
 
 if __name__ == "__main__":
@@ -385,8 +421,8 @@ if __name__ == "__main__":
                         help='Path to output folder',
                         type=pathlib.Path,
                         required=True)
-    parser.add_argument('--mmseq_params_file',
-                        help='Path to a file to save MMSeq2 parameters',
+    parser.add_argument('--variant_counts_file',
+                        help='Path to a file to variant counts (mean, stdev)',
                         type=pathlib.Path,
                         required=True)
 
@@ -400,7 +436,7 @@ if __name__ == "__main__":
              chr_map=args.chr_map,
              chr=args.chr,
              out=args.out,
-             mmseq_params_file=args.mmseq_params_file)
+             variant_counts_file=args.variant_counts_file)
 
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
