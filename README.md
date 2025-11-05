@@ -177,31 +177,20 @@ python haploblock_phased_sequences.py \
     --ref data/chr6.fa.gz \
     --chr_map data/chr_map \
     --chr 6 \
-    --out data/CHB/ \
-    --variant_counts_file data/CHB/variant_counts.tsv
+    --out data/CHB/
 ```
 
-This script uses bcftools and bgzip to extract regions corresponding to haploblock boundaries (--boundaries_file) from a population VCF file (--vcf). Note that that the regions of interest can be specified in the boundaries file and samples in the samples file.
+This script uses bcftools and bgzip to extract regions corresponding to haploblock boundaries (--boundaries_file) from a population VCF file (--vcf). The regions of interest can be specified in the boundaries file and samples in the samples file.
 
 NOTE: VCF file has "6" instead of "chr6", which is required by bcftools consensus, create file chr_map with one mapping per line (e.g., "6 chr6") and provide it using --chr_map.
 
-Then it generates a consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref).
-
-We also calculate the mean and average of the number of variants per haploblock, they are saved in --variant_counts_file (with 4 columns: START, END, MEAN, STDEV)
-
-We previously generated haploblock phased sequences, e.g., `NA18531_chr6_region_711055-761032_hap1.fa` with headers like ">chr6:711055-761032", but each sequence in the merged fasta file must have a unique header. During the hackathon, we do this for 5 random haploblocks and generate one merged phased fasta file per haploblock:
+Then it generates consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref). They are saved in out/tmp/. We generate one merged phased fasta file per haploblock:
 ```
-mkdir data/CHB/haploblock_phased_seq_random5
-mv data/CHB/NA* data/CHB/haploblock_phased_seq_random5/.  ## or HG* for GBR/PUR
-
-# generate one merged phased fasta file per haploblock
-mkdir data/CHB/haploblock_phased_seq_random5/haploblock_phased_seq_merged
-./merge_fasta_per_region.sh data/CHB/haploblock_phased_seq_random5 data/CHB/haploblock_phased_seq_random5/haploblock_phased_seq_merged
-tar -zcvf data/CHB/haploblock_phased_seq_random5/CHB_haploblock_phased_seq_merged.tar.gz data/CHB/haploblock_phased_seq_random5/haploblock_phased_seq_merged
-
-# we recommend keeping only the merged phased fasta file for all samples
-rm data/CHB/haploblock_phased_seq_random5/NA*  ## or HG* for GBR/PUR
+./merge_fasta_per_region.sh out/tmp out/haploblock_phased_seq_merged
+tar -zcvf out/haploblock_phased_seq_merged.tar.gz out/haploblock_phased_seq_merged
 ```
+
+We also calculate the mean and average of the number of variants per haploblock, they are saved in variant_counts.tsv (with 4 columns: START, END, MEAN, STDEV). We assign variant hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interes: 1 if variant in the sample or 0 otherwise.
 
 
 #### 3. Generate haploblock clusters

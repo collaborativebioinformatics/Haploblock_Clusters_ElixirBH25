@@ -226,7 +226,6 @@ def main(boundaries_file, samples_file, vcf, ref, chr_map, chr, out):
     variants = ["31480875"]
     individual2variantHash = generate_variant_hashes(variants, vcf, chr, haploblock_boundaries, samples)
     variant_hashes_to_TSV(individual2variantHash, out)
-    exit(1)
 
     for (start, end) in haploblock_boundaries:
         logger.info(f"Generating phased VCF for haploblock {start}-{end}")
