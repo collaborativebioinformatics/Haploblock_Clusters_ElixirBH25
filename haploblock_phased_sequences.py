@@ -74,8 +74,8 @@ def generate_consensus_fasta(fasta, vcf, out):
     - output_hap0: pathlib.Path to consensus fasta with hap0
     - output_hap1: pathlib.Path to consensus fasta with hap1
     """
-    output_hap0 = os.path.join(out, "tmp", pathlib.Path(vcf.stem).stem + "_hap0.fa")  # removes .vcf.gz
-    output_hap1 = os.path.join(out, "tmp", pathlib.Path(vcf.stem).stem + "_hap1.fa")  # removes .vcf.gz
+    output_hap0 = os.path.join(out, "tmp", "consensus_fasta", pathlib.Path(vcf.stem).stem + "_hap0.fa")
+    output_hap1 = os.path.join(out, "tmp", "consensus_fasta", pathlib.Path(vcf.stem).stem + "_hap1.fa")
     
     # create a consensus sequence (fasta) from reference and variants extracted from VCF
     # haploid sequence 1
@@ -217,6 +217,7 @@ def main(boundaries_file, samples_file, vcf, ref, chr_map, chr, variants_file, o
         subprocess.run(["rm", "-r", os.path.join(out, "tmp")],
                        check=True)
     os.mkdir(os.path.join(out, "tmp"))
+    os.mkdir(os.path.join(out, "tmp", "consensus_fasta"))
 
     logger.info("Parsing haploblock boundaries")
     haploblock_boundaries = data_parser.parse_haploblock_boundaries(boundaries_file)
