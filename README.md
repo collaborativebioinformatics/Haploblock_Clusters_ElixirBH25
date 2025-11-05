@@ -188,7 +188,6 @@ NOTE: VCF file has "6" instead of "chr6", which is required by bcftools consensu
 Then it generates consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref). They are saved in out/tmp/. We generate one merged phased fasta file per haploblock:
 ```
 ./merge_fasta_per_region.sh out/tmp out/haploblock_phased_seq_merged
-tar -zcvf out/haploblock_phased_seq_merged.tar.gz out/haploblock_phased_seq_merged
 ```
 
 We also calculate the mean and average of the number of variants per haploblock, they are saved in variant_counts.tsv (with 4 columns: START, END, MEAN, STDEV). We assign variant hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interes: 1 if variant in the sample or 0 otherwise.

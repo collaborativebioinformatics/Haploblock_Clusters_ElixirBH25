@@ -39,4 +39,6 @@ for f in "$input_dir"/*.fasta "$input_dir"/*.fa; do
     grep -v "^>" "$f" >> "$output"
 done
 
+tar -zcvf "${output_dir}.tar.gz" "${output_dir}"
+
 echo "✅ One FASTA per region written to: ${output_dir}"
