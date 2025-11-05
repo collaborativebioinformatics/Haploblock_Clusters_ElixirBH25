@@ -57,7 +57,7 @@ def calculate_mmseq_params(variant_counts_file):
     return(haploblock2min_id, haploblock2cov_fraction)
 
 
-def compute_clusters(input_fasta, out, temp_dir, min_seq_id, cov_fraction, cov_mode,
+def compute_clusters(input_fasta, out, min_seq_id, cov_fraction, cov_mode,
                      chr, start, end):
     """
     Run MMSeqs2
@@ -66,12 +66,12 @@ def compute_clusters(input_fasta, out, temp_dir, min_seq_id, cov_fraction, cov_m
     - input_fasta: merged phased fasta file for haploblock
     """
 
-    output_prefix = os.path.join(out, f"chr{chr}_{start}-{end}")
+    output_prefix = os.path.join(out, "clusters", f"chr{chr}_{start}-{end}")
 
     subprocess.run(["mmseqs", "easy-cluster",
                     input_fasta,
                     output_prefix,
-                    temp_dir,
+                    os.path.join(out, "tmp"),
                     "--min-seq-id", str(min_seq_id),
                     "-c", str(cov_fraction),
                     "--cov-mode", str(cov_mode),
@@ -79,7 +79,13 @@ def compute_clusters(input_fasta, out, temp_dir, min_seq_id, cov_fraction, cov_m
                     check=True)
 
 
-def main(boundaries_file, merged_consensus_dir, variant_counts_file, chr, out, temp_dir, cov_mode):
+def main(boundaries_file, merged_consensus_dir, variant_counts_file, chr, out, cov_mode):
+
+    if os.path.exists(os.path.join(out, "clusters")):
+        logger.error(f"Output directory {os.path.join(out)} exists, please remove it")
+        raise Exception("Output directory exists")
+    os.mkdir(os.path.join(out, "clusters"))
+
 
     logger.info("Parsing haploblock boundaries")
     haploblock_boundaries = data_parser.parse_haploblock_boundaries(boundaries_file)
@@ -94,7 +100,7 @@ def main(boundaries_file, merged_consensus_dir, variant_counts_file, chr, out, t
         min_seq_id = haploblock2min_id[(start, end)]
         cov_fraction = haploblock2cov_fraction[(start, end)]
 
-        compute_clusters(input_fasta, out, temp_dir, min_seq_id, cov_fraction, cov_mode,
+        compute_clusters(input_fasta, out, min_seq_id, cov_fraction, cov_mode,
                          chr, start, end)
 
 
@@ -132,10 +138,6 @@ if __name__ == "__main__":
                         help='Path to output directory for clusters',
                         type=pathlib.Path,
                         required=True)
-    parser.add_argument('--temp_dir',
-                        help='Path to MMSeqs2 temporary files',
-                        type=pathlib.Path,
-                        required=True)
     parser.add_argument('--cov_mode',
                         help='coverage mode (optional)',
                         type=int,
@@ -150,7 +152,6 @@ if __name__ == "__main__":
              variant_counts_file=args.variant_counts,
              chr=args.chr,
              out=args.out,
-             temp_dir=args.temp_dir,
              cov_mode=args.cov_mode)
 
     except Exception as e:

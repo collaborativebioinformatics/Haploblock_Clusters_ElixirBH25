@@ -197,19 +197,15 @@ We also calculate the mean and average of the number of variants per haploblock,
 
 Cluster haploblock phased sequences using MMSeqs2:
 ```
-mkdir -p data/clusters/tmp
+python clusters.py --boundaries_file data/haploblock_boundaries_chr6_TNFa.tsv --merged_consensus_dir data/test/GBR/TNFa/haploblock_phased_seq_merged --variant_counts data/test/GBR/TNFa/variant_counts.tsv --chr 6 --out data/test/GBR/TNFa
 ```
 
-```
-python clusters.py --boundaries_file data/haploblock_boundaries_chr6_TNFa.tsv --merged_consensus_dir data/CHB/haploblock_phased_seq_TNFa/haploblock_phased_seq_merged --variant_counts data/CHB/TNFa_CHB_variant_counts.tsv --chr 6 --out data/clusters/ --temp_dir data/clusters/tmp/
-```
-
-This uses previously generated haploblock phased sequences (--merged_consensus_dir) and variant counts (--variant_counts), based on which it calculates MMSeqs parameters: min sequence identify and coverage fraction. It runs MMSeqs2 to generate for each haploblock a TSV file with two columns: cluster representative, cluster member
+This uses previously generated haploblock phased sequences (--merged_consensus_dir) and variant counts (--variant_counts), based on which it calculates MMSeqs parameters: min sequence identify and coverage fraction. For each haploblock it generates a directory clusters/ a with a TSV file, which contains clusters for each haploblock.
 
 
 # Results
 
-We generated haploblock phased sequences (format: sample_chr_region_start-end_hap1/2.fa) for all samples from the CBH, PUR and GBR populations for the following regions:
+We generated haploblock phased sequences (format: sample_chr_region_start-end_hap0/1.fa) for all samples from the CBH, PUR and GBR populations for the following regions:
 - 10 random haploblocks of chr6
 - 5 random haploblocks of chr 6
 - haploblock overlapping with TNFa
