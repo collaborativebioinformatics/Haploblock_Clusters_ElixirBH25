@@ -123,7 +123,7 @@ def extract_region_from_vcf(vcf, chr, chr_map, start, end, out):
     """
     Extract a specific region from a VCF file
 
-    Generates the following files in out/ :
+    Generates the following files in out/tmp/:
     - {chr}_region_{start}-{end}.vcf.gz
     - {chr}_region_{start}-{end}.vcf.gz.csi
     - chr{chr}_region_{start}-{end}.vcf
@@ -137,7 +137,7 @@ def extract_region_from_vcf(vcf, chr, chr_map, start, end, out):
         chr = chr.replace("chr", "")
 
     # extract region start-end from VCF and index
-    temporary_vcf = os.path.join(out, f"{chr}_region_{start}-{end}.vcf.gz")
+    temporary_vcf = os.path.join(out, "tmp", f"{chr}_region_{start}-{end}.vcf.gz")
 
     subprocess.run(["bcftools", "view",
                     "-r", f"{chr}:{start}-{end}",
@@ -153,8 +153,8 @@ def extract_region_from_vcf(vcf, chr, chr_map, start, end, out):
     # VCF has 6 instead of chr6, which is required by bcftools consensus
     # create file chr_map: "6 chr6" one mapping per line
     # map chr6 to 6, bgzip and index
-    output_vcf = os.path.join(out, f"chr{chr}_region_{start}-{end}.vcf")
-    output_index = os.path.join(out, f"chr{chr}_region_{start}-{end}.vcf.gz.csi")
+    output_vcf = os.path.join(out, "tmp", f"chr{chr}_region_{start}-{end}.vcf")
+    output_index = os.path.join(out, "tmp", f"chr{chr}_region_{start}-{end}.vcf.gz.csi")
 
     subprocess.run(["bcftools", "annotate",
                     "--rename-chrs", chr_map,
@@ -185,7 +185,7 @@ def extract_sample_from_vcf(vcf, sample, out):
     - output_vcf: pathlib.Path to bgzipped VCF
     """
 
-    output_vcf = os.path.join(out, sample + "_" + vcf.stem + ".gz")
+    output_vcf = os.path.join(out, "tmp", sample + "_" + vcf.stem + ".gz")
 
     # extract sample from VCF and index
     subprocess.run(["bcftools", "view",
@@ -214,7 +214,7 @@ def extract_region_from_fasta(fasta, chr, start, end, out):
                     fasta],
                     check=True)
     
-    output_fasta = os.path.join(out, f"chr{chr}_region_{start}-{end}.fa")
+    output_fasta = os.path.join(out, "tmp", f"chr{chr}_region_{start}-{end}.fa")
     # extract region start-end from reference fasta
     subprocess.run(["samtools", "faidx",
                     fasta,

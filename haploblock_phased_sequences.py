@@ -63,8 +63,8 @@ def generate_consensus_fasta(fasta, vcf, out):
     - ref_chr6.fa.gz.gzi
     - chr{chr}_region_{start}-{end}.fa.gz
     """
-    output_hap1 = os.path.join(out, pathlib.Path(vcf.stem).stem + "_hap1.fa")  # removes .vcf.gz
-    output_hap2 = os.path.join(out, pathlib.Path(vcf.stem).stem + "_hap2.fa")  # removes .vcf.gz
+    output_hap0 = os.path.join(out, "tmp", pathlib.Path(vcf.stem).stem + "_hap0.fa")  # removes .vcf.gz
+    output_hap1 = os.path.join(out, "tmp", pathlib.Path(vcf.stem).stem + "_hap1.fa")  # removes .vcf.gz
     
     # create a consensus sequence (fasta) from reference and variants extracted from VCF
     # haploid sequence 1
@@ -188,6 +188,17 @@ def main(boundaries_file, samples_file, vcf, ref, chr_map, chr, out):
     if not os.path.exists(chr_map):
         logger.error(f"File {chr_map} does not exist.")
         raise Exception("File does not exist")
+    
+    # create out/ and a tmp/ directory in out/ for temporary files
+    if os.path.exists(os.path.join(out, "tmp")):
+        logger.error(f"Output directory {os.path.join(out)} exists, please remove it")
+        raise Exception("Output directory exists")
+    os.makedirs(out)
+    if os.path.exists(os.path.join(out, "tmp")):
+        logger.info(f"Temporary directory {os.path.join(out, 'tmp')} exists, removing it")
+        subprocess.run(["rm", "-r", os.path.join(out, "tmp")],
+                       check=True)
+    os.mkdir(os.path.join(out, "tmp"))
 
     logger.info("Parsing haploblock boundaries")
     haploblock_boundaries = data_parser.parse_haploblock_boundaries(boundaries_file)
