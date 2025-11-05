@@ -62,7 +62,6 @@ def parse_recombination_rates(recombination_file, chromosome):
         if rates[i] > 10 * avg_rate:
             high_rates.append(rates[i])
             high_rates_positions.append(positions[i])
-    logger.info("Found %i positions with recombination rates > 10 x average", len(high_rates))
     
     # add first haploblock
     haploblock_boundaries.append((1, high_rates_positions[0]))
@@ -74,6 +73,8 @@ def parse_recombination_rates(recombination_file, chromosome):
     
     # add last haploblock
     haploblock_boundaries.append((high_rates_positions[-1], positions[-1]))
+
+    logger.info("Found %i haploblocks", len(haploblock_boundaries))
     
     return(haploblock_boundaries)
 
