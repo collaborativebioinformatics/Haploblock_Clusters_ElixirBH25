@@ -56,14 +56,14 @@ TBD
 
 #### 1. Generate haploblock boundaries and hashes for chr6 using the Halldorsson2019 recombination map:
 ```
-python build_haploblocks.py --recombination_file data/Halldorsson2019/aau1043_datas3 --chr 6 --out data/
+python haploblocks.py --recombination_file data/Halldorsson2019/aau1043_datas3 --chr 6 --out data/
 ```
 
 This creates haploblock boundaries, a TSV file (with header) with 2 columns: START END
 
 as well as haploblock hashes, a TSV file (with header) with 3 columns: START END HASH
 
-Haploblock hash is a unique identifier for a haploblock, ie an integer with len(haploblock_boundaries) digits, 1 and 0
+Haploblock hash is a unique identifier for a haploblock, ie an integer with len(haploblock_boundaries) digits, 1 and 0.
 
 See [haploblock_boundaries_chr6.tsv](data/haploblock_boundaries_chr6.tsv) for 1398 haploblock boundaries (high recombination rates defined as **rate > 10*average**).
 
