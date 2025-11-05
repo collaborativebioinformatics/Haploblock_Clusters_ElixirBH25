@@ -127,7 +127,7 @@ def generate_variant_hashes(variants, vcf, chr, haploblock_boundaries, samples):
     
     print(start, end)
     
-    # initialize all variant hashes to string of "0"s
+    # initialize all variant hashes to lists of "0"s
     individual2variantHash = {}
     for sample in samples:
         individual_1 = f"{sample}_chr{chr}_region_{start}-{end}_hap0"
@@ -136,7 +136,7 @@ def generate_variant_hashes(variants, vcf, chr, haploblock_boundaries, samples):
         individual2variantHash[individual_1] = ["0"] * len(variants)
         individual2variantHash[individual_2] = ["0"] * len(variants)
 
-    # search for genotypes in VCF
+    # search for variants in VCF
     query = chr + ":" + ",".join(variants)
     sub_vcf = subprocess.run(["bcftools", "query",
                              "-f", "%CHROM\t%POS[\t%GT]\n",
@@ -148,7 +148,7 @@ def generate_variant_hashes(variants, vcf, chr, haploblock_boundaries, samples):
                              text=True,
                              check=True).stdout.splitlines()
     
-    # assign variant hashes
+    # populate variant hashes with "1"s
     for (variant_count, line) in enumerate(sub_vcf):
         line_split = line.split("\t")
         chrom, pos, *genotypes = line_split
@@ -167,6 +167,7 @@ def generate_variant_hashes(variants, vcf, chr, haploblock_boundaries, samples):
             if hap1 == "1":
                 individual2variantHash[individual_2][variant_count] = "1"
 
+    # converst hash lists to strings 
     for individual in individual2variantHash:
         hashList = individual2variantHash[individual]
         hashStr = "".join(hashList)
