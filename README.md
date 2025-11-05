@@ -85,7 +85,7 @@ Then it generates consensus haploblock phased sequences for both haploids of eac
 ./merge_fasta_per_region.sh out/tmp out/haploblock_phased_seq_merged
 ```
 
-We also calculate the mean and average of the number of variants per haploblock, they are saved in variant_counts.tsv (with 4 columns: START, END, MEAN, STDEV). We assign variant hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interes: 1 if variant in the sample or 0 otherwise.
+We also calculate the mean and average of the number of variants per haploblock, they are saved in variant_counts.tsv (with 4 columns: START, END, MEAN, STDEV). We assign variant hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interes: 1 if variant in the sample or 0 otherwise, they are saved in variant_hashes.tsv (with two columns: INDIVIDUAL VAR_HASH)
 
 
 #### 3. Generate haploblock clusters
