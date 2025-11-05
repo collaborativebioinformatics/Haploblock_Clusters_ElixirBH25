@@ -12,7 +12,7 @@ git clone this repo
 
 We assume all data listed below is downloaded into `data/`:
 
-1. deCODE recombination map from Palsson et al., 2024 including both crossover (CO) and non-crsossover (NCO) recombination: https://doi.org/10.5281/zenodo.14025564
+1. deCODE recombination map from Palsson et al., 2024 including both crossover (CO) and non-crossover (NCO) recombination: https://doi.org/10.5281/zenodo.14025564
 
 2. high-resolution recombination map from Halldorsson et al., 2019 with empirically defined recombination rates:
 ```
@@ -34,7 +34,7 @@ and index file:
 wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20190312_biallelic_SNV_and_INDEL/ALL.chr6.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi
 ```
 
-and a TSV file with the list of samples in pupulations:
+and a TSV file with the list of samples in populations:
 - CHB (113 samples): https://www.internationalgenome.org/data-portal/population/CHB
 - PUR (150 samples): https://www.internationalgenome.org/data-portal/population/PUR
 - GBR (107 samples): https://www.internationalgenome.org/data-portal/population/GBR
