@@ -20,7 +20,7 @@ def generate_haploblock_hashes(haploblock_boundaries):
     """
     haploblock2hash = {}
     
-    idx = len(haploblock_boundaries) - 1  # start hashes from the end
+    idx = len(haploblock_boundaries) - 1  # populating cluster hashes from the end
     for (start, end) in haploblock_boundaries:
         hashList = ["0"] * len(haploblock_boundaries)
         hashList[idx] = "1"
