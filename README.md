@@ -107,7 +107,7 @@ python haploblock_phased_sequences.py \
     --chr_map data/chr_map \
     --chr 6 \
     --variants data/variants_of_interest.txt \
-    --out data/CHB/
+    --out data/
 ```
 *If you would like to run one haploblock as a test, please swap in data/haploblock_boundaries_chr6_TNFa.tsv for --boundaries_file*
 
@@ -117,9 +117,11 @@ This script uses bcftools and bgzip to extract regions corresponding to haploblo
 
 Then it generates consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref). They are saved in out/tmp/. We generate one merged phased fasta file per haploblock:
 ```
-./merge_fasta_per_region.sh data/CHB/tmp/consensus_fasta data/CHB/haploblock_phased_seq_merged
+./merge_fasta_per_region.sh data/tmp/consensus_fasta data/haploblock_phased_seq_merged
+Remove the data/tmp/ directory
 ```
-## we will remove --samples (and all population specific (e.g. CHB) folders later)
+
+## we will remove --samples_file later
 
 #### 3. Generate haploblock clusters
 
@@ -127,18 +129,18 @@ Cluster haploblock phased sequences using MMSeqs2:
 ```
 python clusters.py \
     --boundaries_file data/haploblock_boundaries_chr6.tsv \
-    --merged_consensus_dir data/CHB/haploblock_phased_seq_merged \
-    --variant_counts data/CHB/variant_counts.tsv \
+    --merged_consensus_dir data/haploblock_phased_seq_merged \
+    --variant_counts data/variant_counts.tsv \
     --chr 6 \
-    --out data/CHB/
+    --out data/
 ```
 
-This uses previously generated haploblock phased sequences (--merged_consensus_dir) and variant counts (--variant_counts), based on which it calculates MMSeqs parameters: min sequence identify and coverage fraction. For each haploblock it generates a TSV file in directory clusters/.
+This uses previously generated haploblock phased sequences (--merged_consensus_dir) and variant counts (--variant_counts), based on which it calculates MMSeqs parameters: min sequence identify and coverage fraction. For each haploblock it generates a TSV file in directory data/clusters/.
 
 
 ### 4. Generate variant hashes
 
-Each variant hash is a 64-character string of 0/1s and contains:
+Each variant hash is a 64-character string of 0/1s. It contains:
 - strand hash: 4 chars
 - chromosome hash: 10 chars
 - haploblock hash: 20 chars
@@ -147,14 +149,19 @@ Each variant hash is a 64-character string of 0/1s and contains:
 
 ```
 python variant_hashes.py \
-    --clusters data/CHB/TNFa/clusters/chr6_31480875-31598421_cluster.tsv \
-    --variant_hashes data/CHB/TNFa/variant_hashes.tsv \
+    --clusters data/clusters/chr6_31480875-31598421_cluster.tsv \
+    --variant_hashes data/variant_hashes.tsv \
     --haploblock_hashes data/haploblock_hashes_chr6.tsv \
     --chr 6 \
-    --out data/CHB/
+    --out data/
 ```
-This will run for one cluster.tsv file
 
+The output is individual_hashes.tsv with two columns: INDIVIDUAL HASH
+
+
+## Model
+
+TBD
 
 # Results
 
@@ -273,9 +280,8 @@ We generated haploblock phased sequences (format: sample_chr_region_start-end_ha
 - haploblock overlapping with TNFa
 - haploblock overlapping with height genes (TODO ref)
 
-+ haploblock phased sequences for TNFa for all populations
++ haploblock phased sequences and haploblock hashes for TNFa for all populations
 
-We generated haploblock clusters.
 
 # System requirements
 
