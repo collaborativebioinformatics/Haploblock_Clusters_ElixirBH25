@@ -6,6 +6,7 @@
 
 ```
 git clone this repo
+cd Haploblock_Clusters_ElixirBH25/
 ```
 ## Configure Python environment
 
