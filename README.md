@@ -7,7 +7,7 @@
 ```
 git clone this repo
 ```
-## Python environment
+## Configure Python environment
 
 Installed via [Python venv](https://docs.python.org/3/library/venv.html) with the following command:
 
@@ -22,9 +22,7 @@ pip install numpy
 
 We assume all data listed below is downloaded into `data/`:
 
-1. deCODE recombination map from Palsson et al., 2024 including both crossover (CO) and non-crossover (NCO) recombination: https://doi.org/10.5281/zenodo.14025564
-
-2. high-resolution recombination map from Halldorsson et al., 2019 with empirically defined recombination rates:
+1. high-resolution recombination map from Halldorsson et al., 2019 with empirically defined recombination rates:
 ```
 wget https://www.science.org/doi/suppl/10.1126/science.aau1043/suppl_file/aau1043_datas3.gz
 gzip -d aau1043_datas3.gz
@@ -32,7 +30,7 @@ gzip -d aau1043_datas3.gz
 
 File `aau1043_datas3` contains averaged maternal and paternal recombination rates.
 
-3. 1000Genomes, HGSVC, Phase 3
+2. 1000Genomes, HGSVC, Phase 3
 
 Phased VCF file of chromosome 6 (2548 samples):
 ```
@@ -49,7 +47,7 @@ and a TSV file with the list of samples in populations:
 - PUR (150 samples): https://www.internationalgenome.org/data-portal/population/PUR
 - GBR (107 samples): https://www.internationalgenome.org/data-portal/population/GBR
 
-4. Reference sequence for chromosome 6 (GRCh38), must be bgzipped:
+3. Reference sequence for chromosome 6 (GRCh38), must be bgzipped:
 ```
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr6.fa.gz
 gzip -d chr6.fa.gz
