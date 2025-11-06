@@ -56,7 +56,10 @@ TBD
 
 #### 1. Generate haploblock boundaries and hashes for chr6 using the Halldorsson2019 recombination map:
 ```
-python haploblocks.py --recombination_file data/Halldorsson2019/aau1043_datas3 --chr 6 --out data/
+python haploblocks.py \
+    --recombination_file data/Halldorsson2019/aau1043_datas3 \
+    --chr 6 \
+    --out data/
 ```
 
 This creates haploblock boundaries, a TSV file (with header) with 2 columns: START END
@@ -102,6 +105,23 @@ python clusters.py \
 ```
 
 This uses previously generated haploblock phased sequences (--merged_consensus_dir) and variant counts (--variant_counts), based on which it calculates MMSeqs parameters: min sequence identify and coverage fraction. For each haploblock it generates a TSV file in directory clusters/.
+
+
+### 4. Generate variant hashes
+
+Each variant hash is a 64-bit string of 0/1s and contains:
+- strand hash: 4 bits
+- chromosome hash: 10 bits
+- haploblock hash: 20 bits
+- cluster hash: 20 bits
+- individual hash: 10 bits
+
+```
+python variant_hashes.py \
+    --clusters data/CHB/TNFa/clusters/chr6_31480875-31598421_cluster.tsv \
+    --individual_hashes data/CHB/TNFa/individual_hashes.tsv \
+    --haploblock_hashes data/haploblock_boundaries_chr6_TNFa.tsv
+```
 
 
 # Results
@@ -250,6 +270,11 @@ pip install numpy pandas scipy matplotlib
 ```
 
 Check [requirements.txt](requirements.txt) for versioning.
+
+
+# Acknowlegdements
+
+This work was supported by ELIXIR, the research infrastructure for life science data, and conducted at the ELIXIR BioHackathon Europe.
 
 
 # References
