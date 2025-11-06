@@ -4,17 +4,28 @@ wget https://github.com/samtools/samtools/releases/download/1.22.1/samtools-1.22
 wget https://github.com/samtools/bcftools/releases/download/1.22/bcftools-1.22.tar.bz2
 wget https://github.com/samtools/htslib/releases/download/1.22.1/htslib-1.22.1.tar.bz2
 
-note for samtools: sudo dnf install ncurses-devel (Redhat) or sudo apt install libncurses5-dev (Ubuntu)
+note for samtools: sudo dnf install ncurses-devel (Redhat) or sudo apt install libncurses5-dev liblzma-dev (Ubuntu or Debian)
 note for bcftools: sudo apt install libbz2-dev (Ubuntu)
 
 tar -xvf samtools-1.22.1.tar.bz2
 tar -xvf bcftools-1.22.tar.bz2
 tar -xvf htslib-1.22.1.tar.bz2
 
-cd samtools/htslib/bcftools
+cd samtools-1.22.1/
 ./configure
 make
 make install
+
+cd bcftools-1.22/
+./configure
+make
+make install
+
+cd htslib-1.22.1/
+./configure
+make
+make install
+
 
 # create simlinks for access everywhere
 cd /usr/bin
