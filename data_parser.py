@@ -331,7 +331,7 @@ def parse_clusters(clusters_file):
     """
     Parses clusters file from MMSeqs2 (no header) with 2 columns: representative, individual
     assing unique ids for each cluster.
-    We want to create unique cluster IDs based on cluster representatives,
+    We want to create unique cluster ID (starting at 0) based on cluster representatives,
     and match individual to cluster IDs.
 
     arguments:
@@ -339,7 +339,7 @@ def parse_clusters(clusters_file):
 
     returns:
     - individual2cluster: dict, key=individual, value=unique clusterID
-    - num_clusters: int
+    - clusters: list of cluster IDs
     """
     try:
         f = open(clusters_file, 'r')
@@ -350,6 +350,7 @@ def parse_clusters(clusters_file):
     representative2cluster = {}
     individual2representative = {}
     individual2cluster = {}
+    clusters = []
     num_clusters = 0
     for line in f:
         split_line = line.rstrip().split('\t')
@@ -363,6 +364,7 @@ def parse_clusters(clusters_file):
         
         if not representative in representative2cluster:
             representative2cluster[representative] = num_clusters
+            clusters.append(num_clusters)
             num_clusters += 1
 
         individual2representative[individual] = representative
@@ -372,7 +374,7 @@ def parse_clusters(clusters_file):
         cluster = representative2cluster[representative]
         individual2cluster[individual] = cluster
 
-    return(individual2cluster, num_clusters)
+    return(individual2cluster, clusters)
 
 
 def parse_variant_hashes(variant_hashes):

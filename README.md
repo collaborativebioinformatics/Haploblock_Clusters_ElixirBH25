@@ -112,15 +112,16 @@ This uses previously generated haploblock phased sequences (--merged_consensus_d
 Each variant hash is a 64-character string of 0/1s and contains:
 - strand hash: 4 chars
 - chromosome hash: 10 chars
-- haploblock hash: 20 chars
-- cluster hash: 20 chars
-- variant hash: 10 chars
+- haploblock hash: len(haploblocks) chars chars
+- cluster hash: len(clusters) chars
+- variant hash: len(variants of interest) chars
 
 ```
 python variant_hashes.py \
     --clusters data/CHB/TNFa/clusters/chr6_31480875-31598421_cluster.tsv \
     --variant_hashes data/CHB/TNFa/variant_hashes.tsv \
-    --haploblock_hashes data/haploblock_boundaries_chr6_TNFa.tsv
+    --haploblock_hashes data/haploblock_hashes_chr6.tsv \
+    --out data/CHB/
 ```
 > there should be multiple clusters files
 
