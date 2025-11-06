@@ -37,18 +37,18 @@ gzip -d aau1043_datas3.gz
 File `aau1043_datas3` contains averaged maternal and paternal recombination rates.
 
 2. 1000Genomes, HGSVC, Phase 3
-
+For an example, we use chromosome 6.  If you would like to run all chromosomes, download all of the phased vcf files.  
 Phased VCF file of chromosome 6 (2548 samples):
 ```
 wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20190312_biallelic_SNV_and_INDEL/ALL.chr6.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz
 ```
 
-and index file:
+and index file (same point about chromosomes):
 ```
 wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20190312_biallelic_SNV_and_INDEL/ALL.chr6.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi
 ```
 
-and a TSV file with the list of samples in populations:
+and a TSV file with the list of samples in populations (this is for testing, if you want to run this for all populations, you do not need these, but make sure line xxx in script.py is commented out):
 - CHB (113 samples): https://www.internationalgenome.org/data-portal/population/CHB
 - PUR (150 samples): https://www.internationalgenome.org/data-portal/population/PUR
 - GBR (107 samples): https://www.internationalgenome.org/data-portal/population/GBR
@@ -57,6 +57,7 @@ and a TSV file with the list of samples in populations:
 ```
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr6.fa.gz
 gzip -d chr6.fa.gz
+### If you do not have bgzip, install it (see install_dependencies.txt)
 bgzip chr6.fa
 ```
 
