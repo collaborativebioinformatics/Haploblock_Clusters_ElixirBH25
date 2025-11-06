@@ -84,7 +84,7 @@ python haploblock_phased_sequences.py \
 ```
 NOTE: VCF file has "6" instead of "chr6", which is required by bcftools consensus, create file chr_map with one mapping per line (e.g., "6 chr6") and provide it using --chr_map.
 
-This script uses bcftools and bgzip to extract regions corresponding to haploblock boundaries (--boundaries_file) from a population VCF file (--vcf). Specify variants of interest in a file with one variant per line (--variants), they all must be in the same haploblock and in format: "chr:position". We also calculate the mean and average of the number of variants per haploblock, they are saved in **variant_counts.tsv** (with 4 columns: START, END, MEAN, STDEV). We assign individual hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interest: 1 if variant in the sample or 0 otherwise, they are saved in individual_hashes.tsv (with two columns: INDIVIDUAL HASH)
+This script uses bcftools and bgzip to extract regions corresponding to haploblock boundaries (--boundaries_file) from a population VCF file (--vcf). Specify variants of interest in a file with one variant per line (--variants), they all must be in the same haploblock and in format: "chr:position". We also calculate the mean and average of the number of variants per haploblock, they are saved in **variant_counts.tsv** (with 4 columns: START, END, MEAN, STDEV). We assign individual hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interest: 1 if variant in the sample or 0 otherwise, they are saved in **variant_hashes.tsv** (with two columns: INDIVIDUAL HASH)
 
 Then it generates consensus haploblock phased sequences for both haploids of each sample (e.g., `NA18531_chr6_region_711055-761032_hap1.fa`) by applying common variants (bcftools view `--min-af 0.05`) from previously generated VCF to reference sequence (--ref). They are saved in out/tmp/. We generate one merged phased fasta file per haploblock:
 ```
@@ -109,19 +109,20 @@ This uses previously generated haploblock phased sequences (--merged_consensus_d
 
 ### 4. Generate variant hashes
 
-Each variant hash is a 64-bit string of 0/1s and contains:
-- strand hash: 4 bits
-- chromosome hash: 10 bits
-- haploblock hash: 20 bits
-- cluster hash: 20 bits
-- individual hash: 10 bits
+Each variant hash is a 64-character string of 0/1s and contains:
+- strand hash: 4 chars
+- chromosome hash: 10 chars
+- haploblock hash: 20 chars
+- cluster hash: 20 chars
+- variant hash: 10 chars
 
 ```
 python variant_hashes.py \
     --clusters data/CHB/TNFa/clusters/chr6_31480875-31598421_cluster.tsv \
-    --individual_hashes data/CHB/TNFa/individual_hashes.tsv \
+    --variant_hashes data/CHB/TNFa/variant_hashes.tsv \
     --haploblock_hashes data/haploblock_boundaries_chr6_TNFa.tsv
 ```
+> there should be multiple clusters files
 
 
 # Results
