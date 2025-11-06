@@ -266,7 +266,7 @@ During the hackathon we ran the pipeline on a Linux-based machine with 8 CPU cor
 Installed via [Python venv](https://docs.python.org/3/library/venv.html) with the following command:
 
 ```
-python -m venv --system-site-packages ~/pyEnv_ElixirBH2025
+python3 -m venv --system-site-packages ~/pyEnv_ElixirBH2025
 source ~/pyEnv_ElixirBH2025/bin/activate
 pip install --upgrade pip
 pip install numpy
