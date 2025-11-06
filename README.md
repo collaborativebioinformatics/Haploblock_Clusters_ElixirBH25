@@ -109,6 +109,8 @@ python haploblock_phased_sequences.py \
     --variants data/variants_of_interest.txt \
     --out data/CHB/
 ```
+*If you would like to run one haploblock as a test, please swap in haploblock_boundaries_chr6_TNFa.tsv for --boundaries_file*
+
 NOTE: VCF file has "6" instead of "chr6", which is required by bcftools consensus, create file chr_map with one mapping per line (e.g., "6 chr6") and provide it using --chr_map.
 
 This script uses bcftools and bgzip to extract regions corresponding to haploblock boundaries (--boundaries_file) from a population VCF file (--vcf). Specify variants of interest in a file with one variant per line (--variants), they all must be in the same haploblock and in format: "chr:position". We also calculate the mean and average of the number of variants per haploblock, they are saved in **variant_counts.tsv** (with 4 columns: START, END, MEAN, STDEV). We assign individual hashes, ie integer numbers of lenght variants digits, each corresponding to variant of interest: 1 if variant in the sample or 0 otherwise, they are saved in **variant_hashes.tsv** (with two columns: INDIVIDUAL HASH)
