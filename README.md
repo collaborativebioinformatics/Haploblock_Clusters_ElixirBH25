@@ -119,7 +119,7 @@ Then it generates consensus haploblock phased sequences for both haploids of eac
 ```
 ./merge_fasta_per_region.sh data/CHB/tmp/consensus_fasta data/CHB/haploblock_phased_seq_merged
 ```
-
+## we will remove --samples (and all population specific (e.g. CHB) folders later)
 
 #### 3. Generate haploblock clusters
 
