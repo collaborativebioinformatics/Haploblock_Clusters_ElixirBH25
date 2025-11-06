@@ -48,7 +48,7 @@ and index file (same point about chromosomes):
 wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_project/release/20190312_biallelic_SNV_and_INDEL/ALL.chr6.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi
 ```
 
-and a TSV file with the list of samples in populations (this is for testing, if you want to run this for all populations, you do not need these, but make sure line xxx in script.py is commented out):
+and a TSV file with the list of samples in populations (this is for testing, if you want to run this for all populations, you do not need these, but make sure line 243 in haploblock_phased_sequences.py is commented out):
 - CHB (113 samples): https://www.internationalgenome.org/data-portal/population/CHB
 - PUR (150 samples): https://www.internationalgenome.org/data-portal/population/PUR
 - GBR (107 samples): https://www.internationalgenome.org/data-portal/population/GBR
