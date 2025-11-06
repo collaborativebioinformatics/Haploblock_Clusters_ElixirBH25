@@ -13,7 +13,9 @@ data/Halldorsson2019/*
 !data/Halldorsson2019/aau1043_datas3.gz
 !data/haploblock_boundaries_chr6.tsv
 !data/haploblock_boundaries_chr6_random5.tsv
+!data/haploblock_boundaries_chr6_random10.tsv
 !data/haploblock_boundaries_chr6_TNFa.tsv
+!data/haploblock_boundaries_chr6_heightGenes.tsv
 
 mmseq2-exploration/data/*
 mmseq2-exploration/job-scripts/job-outs/*
