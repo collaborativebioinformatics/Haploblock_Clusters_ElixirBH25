@@ -16,7 +16,7 @@ def calculate_mmseq_params(variant_counts_file):
     """
     Parses variant counts file with 4 columns: start, end, mean, stdev
     mean, stdev of the number of variants per haploblock
-    calculates min identity
+    calculates min identity and coverage fraction
 
     arguments:
     - variant_counts_file
@@ -52,7 +52,7 @@ def calculate_mmseq_params(variant_counts_file):
 
         haploblock_len = int(end) - int(start)
         haploblock2min_id[(start, end)] = 1 - (float(mean) / haploblock_len)
-        haploblock2cov_fraction[(start, end)] = 1 - (682 / haploblock_len)
+        haploblock2cov_fraction[(start, end)] = 1 - (682 / haploblock_len)  # 682bp is the resolution of the recombination map
 
     return(haploblock2min_id, haploblock2cov_fraction)
 
