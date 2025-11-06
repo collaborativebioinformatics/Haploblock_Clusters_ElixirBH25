@@ -20,11 +20,16 @@ pip install numpy
 ```
 # Data
 
-We assume all data listed below is downloaded into `data/`:
+All data listed below must be downloaded into `data/`:
+
+```
+cd data/
+```
 
 1. high-resolution recombination map from Halldorsson et al., 2019 with empirically defined recombination rates:
 ```
-wget https://www.science.org/doi/suppl/10.1126/science.aau1043/suppl_file/aau1043_datas3.gz
+Download https://www.science.org/doi/suppl/10.1126/science.aau1043/suppl_file/aau1043_datas3.gz
+Upload the file to the data/ directory in this repo
 gzip -d aau1043_datas3.gz
 ```
 
