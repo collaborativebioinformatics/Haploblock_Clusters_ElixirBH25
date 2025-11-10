@@ -7,12 +7,9 @@ set -euo pipefail
 #
 # Usage:
 #   ./merge_fasta_per_region.sh <input_directory> <output_directory> [--clean]
-#
-# Example:
-#   ./merge_fasta_per_region.sh out_dir/TNFa/tmp/consensus_fasta out_dir/TNFa/haploblock_phased_seq_merged --clean
 # ----------------------------------------------------------------------
 
-# --- Argument checks ---------------------------------------------------
+# --- Argument checks ---
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <input_directory> <output_directory> [--clean]" >&2
     exit 1
@@ -22,13 +19,13 @@ input_dir="$1"
 output_dir="$2"
 clean_flag="${3:-}"
 
-# --- Safety checks -----------------------------------------------------
+# --- Safety checks ---
 if [ ! -d "$input_dir" ]; then
     echo "Error: input directory '$input_dir' does not exist." >&2
     exit 1
 fi
 
-# --- Cleanup old output (optional) ------------------------------------
+# --- Cleanup old output (optional) ---
 if [ -d "$output_dir" ]; then
     echo "Output directory '$output_dir' already exists."
     if [ "$clean_flag" = "--clean" ]; then
@@ -42,25 +39,27 @@ fi
 
 mkdir -p "$output_dir"
 
-# --- Logging setup -----------------------------------------------------
+# --- Logging ---
 echo "Starting FASTA merge..."
 echo "Input:  $input_dir"
 echo "Output: $output_dir"
 echo
 
-# --- Merge loop (fast and safe) ---------------------------------------
+# --- Merge loop (safe, no subshell issues) ---
 found_any=false
 
-find "$input_dir" -type f \( -name "*.fa" -o -name "*.fasta" \) | sort | while IFS= read -r f; do
+# Use find + while loop with process substitution to avoid pipe subshell
+while IFS= read -r f; do
     [ -e "$f" ] || continue
     found_any=true
 
-    # Remove extension (.fa or .fasta)
+    # Remove extension (.fa, .fasta)
     name_noext=$(basename "$f" | sed -E 's/\.(fa|fasta)$//')
 
     # Extract region from filename
     region=$(echo "$name_noext" | grep -oE 'chr[0-9XYM]+_region_[0-9]+-[0-9]+' || true)
     [ -z "$region" ] && region="unknown_region"
+
     output="${output_dir}/${region}.fa"
 
     # Extract header
@@ -71,8 +70,10 @@ find "$input_dir" -type f \( -name "*.fa" -o -name "*.fasta" \) | sort | while I
         echo ">$header"
         grep -v "^>" "$f"
     } >> "$output"
-done
 
+done < <(find "$input_dir" -type f \( -name "*.fa" -o -name "*.fasta" \) | sort)
+
+# --- Check if any FASTAs were found ---
 if ! $found_any; then
     echo "No FASTA files found in '$input_dir'." >&2
     exit 1
