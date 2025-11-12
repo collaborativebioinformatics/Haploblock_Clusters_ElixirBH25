@@ -4,11 +4,11 @@ import sys
 import logging
 import argparse
 import pathlib
-import numpy
+import numpy as np
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import data_parser
 
-# Logger setup — inherits root config if used as a module
 logger = logging.getLogger(__name__)
 
 CLUSTER_HASH_LENGTH = 20
@@ -17,76 +17,58 @@ CLUSTER_HASH_LENGTH = 20
 def generate_cluster_hashes(clusters):
     """
     Generate a unique binary hash for each cluster.
-
-    Args:
-        clusters (list): Cluster IDs.
-    Returns:
-        dict: clusterID -> binary hash (string of 0/1s)
+    Parallelization is not needed here — small overhead.
     """
-    cluster2hash = {}
-    for idx, cluster in enumerate(clusters):
-        cluster2hash[cluster] = numpy.binary_repr(idx, width=CLUSTER_HASH_LENGTH)
+    cluster2hash = {cluster: np.binary_repr(idx, width=CLUSTER_HASH_LENGTH)
+                    for idx, cluster in enumerate(clusters)}
     return cluster2hash
 
 
-def generate_individual_hashes(individual2cluster, cluster2hash, variant2hash, haploblock2hash, chr_hash):
-    """
-    Generate individual hashes, ie 64-character strings of 0/1s, each contains:
-        strand hash: 4 char
-        chromosome hash: 10 chars
-        haploblock hash: len(haploblocks) chars
-        cluster hash: len(clusters) chars
-        variant hash: len(variants of interest) chars
+def generate_individual_hash(individual, individual2cluster, cluster2hash,
+                             variant2hash, haploblock2hash, chr_hash):
+    """Generate hash string for a single individual."""
+    strand = individual[-1]
+    strand_hash = "0001" if strand == "0" else "0010"
 
-    arguments:
-    - individual2cluster: dict, key=individual, value=unique clusterID
-    - cluster2hash: dict, key=clusterID, value=hash
-    - variant2hash: dict, key=individual, key=hash
-    - haploblock2hash: dict, key=(start, end), key=hash
-    - chr_hash: 10-digit
+    # Extract start-end robustly
+    individual_split = individual.split("_")
+    region_str = individual_split[3].replace(".fa", "").replace(".fasta", "").replace(".vcf", "")
+    start, end = region_str.split("-")
+    haploblock_hash = haploblock2hash[(start, end)]
+    cluster_hash = cluster2hash[individual2cluster[individual]]
+    variant_hash = variant2hash[individual]
 
-    returns:
-    - individual2hash: dict, key=individual, value=hash
+    return individual, strand_hash + chr_hash + haploblock_hash + cluster_hash + variant_hash
+
+
+def generate_individual_hashes_parallel(individual2cluster, cluster2hash, variant2hash,
+                                        haploblock2hash, chr_hash, max_workers=None):
     """
+    Parallelized version: generate hashes for all individuals using ThreadPoolExecutor.
+    """
+    haploblock2hash = {(str(s), str(e)): h for (s, e), h in haploblock2hash.items()}
     individual2hash = {}
 
-    # Normalize haploblock2hash keys to string tuples for safety
-    haploblock2hash = { (str(s), str(e)): h for (s, e), h in haploblock2hash.items() }
+    max_workers = max_workers or (os.cpu_count() - 1 or 1)
+    futures = []
 
-    for individual in individual2cluster:
-        # strand hash
-        # individual is in format: NA18524_chr6_region_31480875-31598421_hap0
-        strand = individual[-1]
-        strand_hash = "0001" if strand == "0" else "0010"
-
-        # Extract start-end from individual name robustly
-        individual_split = individual.split("_")
-        region_str = individual_split[3]  # e.g., "31480875-31598421" or "31480875-31598421.vcf"
-        # Remove possible file extensions
-        region_str = region_str.replace(".fa","").replace(".fasta","").replace(".vcf","")
-        start, end = region_str.split("-")
-
-        # haploblock hash
-        haploblock_hash = haploblock2hash[(start, end)]
-
-        # cluster hash
-        cluster = individual2cluster[individual]
-        cluster_hash = cluster2hash[cluster]
-
-        # variant hash
-        variant_hash = variant2hash[individual]
-
-        # individual hash
-        hash_str = strand_hash + chr_hash + haploblock_hash + cluster_hash + variant_hash
-        individual2hash[individual] = hash_str
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for individual in individual2cluster:
+            futures.append(
+                executor.submit(
+                    generate_individual_hash,
+                    individual, individual2cluster, cluster2hash,
+                    variant2hash, haploblock2hash, chr_hash
+                )
+            )
+        for fut in as_completed(futures):
+            ind, h = fut.result()
+            individual2hash[ind] = h
 
     return individual2hash
 
 
 def hashes_to_TSV(individual2hash, out):
-    """
-    Save individual → hash mapping to a TSV file.
-    """
     output_path = os.path.join(out, "individual_hashes.tsv")
     with open(output_path, 'w') as f:
         f.write("INDIVIDUAL\tHASH\n")
@@ -106,22 +88,25 @@ def main(clusters_file, variant_hashes, haploblock_hashes, chr, out):
     logger.info("Parsing haploblock hashes")
     haploblock2hash = data_parser.parse_haploblock_hashes(haploblock_hashes)
 
-    logger.info("Generating individual hashes")
-    chr_hash = numpy.binary_repr(int(chr))
+    logger.info("Generating individual hashes (parallelized)")
+    chr_hash = np.binary_repr(int(chr))
     cluster2hash = generate_cluster_hashes(clusters)
-    individual2hash = generate_individual_hashes(
+    individual2hash = generate_individual_hashes_parallel(
         individual2cluster, cluster2hash, variant2hash, haploblock2hash, chr_hash
     )
 
     logger.info("Saving individual hashes")
     hashes_to_TSV(individual2hash, out)
 
-    # Perspective:
-    # ─────────────
-    # # Save also as JSON for programmatic access
-    # import json
-    # with open(os.path.join(out, "individual_hashes.json"), "w") as jf:
-    #     json.dump(individual2hash, jf, indent=2)
+
+# ----------------------------------------------------------------------
+# CUDA perspective
+# ----------------------------------------------------------------------
+#    Bitwise hash computation is perfect for GPU acceleration:
+#    - Represent hashes as uint8/uint32 arrays on GPU
+#    - Use CuPy or PyTorch for batch concatenation of strand, chr, haploblock, cluster, variant hashes
+#    - Can scale to millions of individuals efficiently
+#    - Final conversion to string can be done on CPU before TSV export
 
 
 if __name__ == "__main__":
@@ -129,7 +114,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        level=logging.DEBUG,
+        level=logging.INFO,
     )
     logger = logging.getLogger(script_name)
 

@@ -1,85 +1,60 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ----------------------------------------------------------------------
-# merge_fasta_per_region.sh
-# Combine individual FASTA files per haploblock region into merged FASTAs.
-#
-# Usage:
-#   ./merge_fasta_per_region.sh <input_directory> <output_directory> [--clean]
-# ----------------------------------------------------------------------
-
-# --- Argument checks ---
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 <input_directory> <output_directory> [--clean]" >&2
-    exit 1
-fi
-
 input_dir="$1"
 output_dir="$2"
 clean_flag="${3:-}"
 
-# --- Safety checks ---
-if [ ! -d "$input_dir" ]; then
-    echo "Error: input directory '$input_dir' does not exist." >&2
-    exit 1
-fi
+[ ! -d "$input_dir" ] && { echo "Input dir not found"; exit 1; }
 
-# --- Cleanup old output (optional) ---
-if [ -d "$output_dir" ]; then
-    echo "Output directory '$output_dir' already exists."
-    if [ "$clean_flag" = "--clean" ]; then
-        echo "Removing existing directory..."
-        rm -rf "$output_dir"
-    else
-        echo "Refusing to overwrite. Use --clean to remove it." >&2
-        exit 1
-    fi
-fi
-
+[ -d "$output_dir" ] && [ "$clean_flag" = "--clean" ] && rm -rf "$output_dir"
 mkdir -p "$output_dir"
 
-# --- Logging ---
-echo "Starting FASTA merge..."
-echo "Input:  $input_dir"
-echo "Output: $output_dir"
-echo
+jobs=$(( $(nproc) - 1 ))
+jobs=$(( jobs > 0 ? jobs : 1 ))
 
-# --- Merge loop (safe, no subshell issues) ---
-found_any=false
+echo "Starting FASTA merge with $jobs jobs..."
 
-# Use find + while loop with process substitution to avoid pipe subshell
+merge_region() {
+    local region="$1"
+    local output_dir="$2"
+    shift 2
+    local files=("$@")
+    output="${output_dir}/${region}.fa"
+    > "$output"
+
+    for f in "${files[@]}"; do
+        name_noext=$(basename "$f" | sed -E 's/(\.vcf)?\.(fa|fasta)$//')
+        header=$(echo "$name_noext" | grep -oE '[^_]+_chr[0-9XYM]+_region_[0-9]+-[0-9]+_hap[0-9]+' || true)
+        [ -z "$header" ] && header="$name_noext"
+        {
+            echo ">$header"
+            grep -v "^>" "$f"
+        } >> "$output"
+    done
+}
+
+export -f merge_region
+
+# --- Prepare a list of regions with files ---
+tmp_file=$(mktemp)
 while IFS= read -r f; do
-    [ -e "$f" ] || continue
-    found_any=true
-
-    # Remove extensions (.vcf, .fa, .fasta)
     name_noext=$(basename "$f" | sed -E 's/(\.vcf)?\.(fa|fasta)$//')
-
-    # Extract region from filename
     region=$(echo "$name_noext" | grep -oE 'chr[0-9XYM]+_region_[0-9]+-[0-9]+' || true)
     [ -z "$region" ] && region="unknown_region"
-
-    output="${output_dir}/${region}.fa"
-
-    # Extract header
-    header=$(echo "$name_noext" | grep -oE '[^_]+_chr[0-9XYM]+_region_[0-9]+-[0-9]+_hap[0-9]+' || true)
-    [ -z "$header" ] && header="$name_noext"
-
-    {
-        echo ">$header"
-        grep -v "^>" "$f"
-    } >> "$output"
-
+    echo "$region $f" >> "$tmp_file"
 done < <(find "$input_dir" -type f \( -name "*.fa" -o -name "*.fasta" \) | sort)
 
-# --- Check if any FASTAs were found ---
-if ! $found_any; then
-    echo "No FASTA files found in '$input_dir'." >&2
-    exit 1
-fi
+# --- Merge per region ---
+cut -d' ' -f1 "$tmp_file" | sort -u | while read -r region; do
+    files=($(awk -v r="$region" '$1==r {print $2}' "$tmp_file"))
+    merge_region "$region" "$output_dir" "${files[@]}" &
+    # Control max parallel jobs
+    while (( $(jobs -r | wc -l) >= jobs )); do sleep 0.1; done
+done
 
-echo
+wait
+rm "$tmp_file"
+
 echo "Merge complete."
-echo "One FASTA per region written to: ${output_dir}/"
 

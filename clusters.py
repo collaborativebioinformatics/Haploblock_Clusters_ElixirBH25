@@ -5,7 +5,7 @@ import logging
 import argparse
 import pathlib
 import subprocess
-from concurrent.futures import ThreadPoolExecutor, as_completed  # perspective
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import data_parser
 
@@ -16,11 +16,6 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------
 
 def calculate_mmseq_params(variant_counts_file: pathlib.Path):
-    """
-    Parse variant counts (START, END, MEAN, STDEV) and compute:
-    - min identity
-    - coverage fraction
-    """
     haploblock2min_id = {}
     haploblock2cov_fraction = {}
 
@@ -46,9 +41,6 @@ def calculate_mmseq_params(variant_counts_file: pathlib.Path):
 
 def compute_clusters(input_fasta: str, out: str, min_seq_id: float, cov_fraction: float, cov_mode: int,
                      chrom: str, start: str, end: str):
-    """
-    Run MMSeqs2 easy-cluster for one haploblock.
-    """
     output_prefix = pathlib.Path(out) / "clusters" / f"chr{chrom}_{start}-{end}"
     tmp_dir = pathlib.Path(out) / "tmp"
 
@@ -74,7 +66,6 @@ def compute_clusters(input_fasta: str, out: str, min_seq_id: float, cov_fraction
 def main(boundaries_file: pathlib.Path, merged_consensus_dir: pathlib.Path,
          variant_counts_file: pathlib.Path, chrom: str, out_dir: pathlib.Path, cov_mode: int):
 
-    # --- Sanity checks ---
     for fpath in [boundaries_file, merged_consensus_dir, variant_counts_file]:
         if not fpath.exists():
             logger.error("Path not found: %s", fpath)
@@ -98,48 +89,45 @@ def main(boundaries_file: pathlib.Path, merged_consensus_dir: pathlib.Path,
     if len(haploblock_boundaries) != len(haploblock2min_id):
         raise ValueError("Haploblock count mismatch between boundaries and variant counts")
 
-    logger.info("Computing clusters with MMSeqs2...")
+    logger.info("Computing clusters with MMSeqs2 (parallel)...")
 
-    # --- Sequential execution ---
-    for (start, end) in haploblock_boundaries:
-        input_fasta = merged_consensus_dir / f"chr{chrom}_region_{start}-{end}.fa"
-        if not input_fasta.exists():
-            logger.warning("Skipping missing FASTA file: %s", input_fasta)
-            continue
+    # --- Parallel execution ---
+    max_workers = os.cpu_count() - 1 or 1
+    futures = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for (start, end) in haploblock_boundaries:
+            input_fasta = merged_consensus_dir / f"chr{chrom}_region_{start}-{end}.fa"
+            if not input_fasta.exists():
+                logger.warning("Skipping missing FASTA file: %s", input_fasta)
+                continue
+            futures.append(
+                executor.submit(
+                    compute_clusters,
+                    str(input_fasta),
+                    str(out_dir),
+                    haploblock2min_id[(start, end)],
+                    haploblock2cov_fraction[(start, end)],
+                    cov_mode,
+                    chrom, start, end
+                )
+            )
 
-        compute_clusters(
-            input_fasta=str(input_fasta),
-            out=str(out_dir),
-            min_seq_id=haploblock2min_id[(start, end)],
-            cov_fraction=haploblock2cov_fraction[(start, end)],
-            cov_mode=cov_mode,
-            chrom=chrom,
-            start=start,
-            end=end
-        )
-
-    # ------------------------------------------------------------------
-    # Perspective: Parallel execution using ThreadPoolExecutor
-    # ------------------------------------------------------------------
-    # max_workers = os.cpu_count() or 4
-    # with ThreadPoolExecutor(max_workers=max_workers) as executor:
-    #     futures = []
-    #     for (start, end) in haploblock_boundaries:
-    #         input_fasta = merged_consensus_dir / f"chr{chrom}_region_{start}-{end}.fa"
-    #         if not input_fasta.exists():
-    #             continue
-    #         futures.append(executor.submit(
-    #             compute_clusters,
-    #             str(input_fasta), str(out_dir),
-    #             haploblock2min_id[(start, end)],
-    #             haploblock2cov_fraction[(start, end)],
-    #             cov_mode, chrom, start, end
-    #         ))
-    #     for fut in as_completed(futures):
-    #         fut.result()
+        # Wait for all futures
+        for fut in as_completed(futures):
+            fut.result()  # propagate exceptions if any
 
     logger.info("All clusters computed successfully.")
 
+
+# ----------------------------------------------------------------------
+# CUDA perspective
+# ----------------------------------------------------------------------
+# 💡 The current MMseqs2 command-line tool does not natively use CUDA.
+#     For very large haploblocks, one could consider:
+#     - Using GPU-accelerated alignment tools (e.g., cuBLAST, GPU-MMseqs)
+#     - Offloading compute-intensive distance calculations to GPU via PyTorch or CuPy
+#     - Preprocessing sequences in batches on GPU before clustering
+#     These would require rewriting `compute_clusters` or replacing MMseqs2 backend.
 
 # ----------------------------------------------------------------------
 # Entry Point

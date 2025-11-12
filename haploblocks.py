@@ -1,66 +1,64 @@
+#!/usr/bin/env python3
 import sys
 import logging
 import argparse
 import pathlib
 import numpy as np
+from multiprocessing import Pool, cpu_count
 import data_parser
-# from multiprocessing import Pool, cpu_count  # optional: enable if parallelizing
 
 logger = logging.getLogger(__name__)
 
 HAPLOBLOCK_HASH_LENGTH = 20
+#PARALLEL_THRESHOLD = 1_000_000  # Enable multiprocessing if > 1M haploblocks
+PARALLEL_THRESHOLD = 1000  # DEV only option Trigger parallelization when >1000 haploblock
+
+def _make_hash(i: int) -> str:
+    """Helper function for multiprocessing."""
+    return np.binary_repr(i, width=HAPLOBLOCK_HASH_LENGTH)
 
 
 def generate_haploblock_hashes(haploblock_boundaries: list[tuple[int, int]]) -> dict[tuple[int, int], str]:
     """
     Generate unique binary hashes for each haploblock boundary.
 
+    Uses multiprocessing for large datasets to speed up hash generation.
+
     Args:
         haploblock_boundaries: List of (start, end) tuples.
 
     Returns:
         Dict mapping (start, end) -> binary hash string.
-
-    Notes:
-        For very large datasets (>10M haploblocks), consider enabling the
-        parallel version below for faster generation.
     """
     n_blocks = len(haploblock_boundaries)
-    hashes = np.array([np.binary_repr(i, width=HAPLOBLOCK_HASH_LENGTH) for i in range(n_blocks)])
-    return dict(zip(haploblock_boundaries, hashes))
+    logger.info(f"Generating hashes for {n_blocks:,} haploblocks")
 
-    # -------------------------------------------------------------------------
-    # Perspective: Parallelized Version (commented out)
-    # -------------------------------------------------------------------------
-    # If haploblock_boundaries is extremely large, this approach can
-    # speed up hash generation using all CPU cores.
-    #
-    # def _make_hash(i):
-    #     return np.binary_repr(i, width=HAPLOBLOCK_HASH_LENGTH)
-    #
-    # n_blocks = len(haploblock_boundaries)
-    # with Pool(cpu_count()) as pool:
-    #     hashes = pool.map(_make_hash, range(n_blocks))
-    #
-    # return dict(zip(haploblock_boundaries, hashes))
-    # -------------------------------------------------------------------------
+    if n_blocks == 0:
+        logger.warning("No haploblocks provided.")
+        return {}
+
+    # Decide execution strategy
+    if n_blocks > PARALLEL_THRESHOLD:
+        logger.info(f"Large dataset detected (> {PARALLEL_THRESHOLD:,} blocks). Using parallel generation.")
+        with Pool(cpu_count()) as pool:
+            hashes = pool.map(_make_hash, range(n_blocks))
+    else:
+        # Vectorized version for smaller datasets
+        hashes = [np.binary_repr(i, width=HAPLOBLOCK_HASH_LENGTH) for i in range(n_blocks)]
+
+    return dict(zip(haploblock_boundaries, hashes))
 
 
 def haploblocks_to_tsv(haploblock_boundaries: list[tuple[int, int]], chrom: str, out_dir: pathlib.Path) -> None:
-    """
-    Save haploblock boundaries to TSV file.
-    """
+    """Save haploblock boundaries to TSV file."""
     output_file = out_dir / f"haploblock_boundaries_chr{chrom}.tsv"
     with output_file.open('w') as f:
         f.write("START\tEND\n")
-        # Using generator expression with writelines() for efficient I/O
         f.writelines(f"{start}\t{end}\n" for start, end in haploblock_boundaries)
 
 
 def haploblock_hashes_to_tsv(haploblock2hash: dict[tuple[int, int], str], chrom: str, out_dir: pathlib.Path) -> None:
-    """
-    Save haploblock hashes to TSV file.
-    """
+    """Save haploblock hashes to TSV file."""
     output_file = out_dir / f"haploblock_hashes_chr{chrom}.tsv"
     with output_file.open('w') as f:
         f.write("START\tEND\tHASH\n")
@@ -82,8 +80,32 @@ def main(recombination_file: pathlib.Path, chrom: str, out_dir: pathlib.Path) ->
     haploblock_hashes_to_tsv(haploblock2hash, chrom, out_dir)
 
 
-
-
+# -------------------------------------------------------------------------
+# CUDA Perspective (Optional, Commented Out)
+# -------------------------------------------------------------------------
+# For extremely large datasets and GPU-enabled environments, this
+# section shows how hashing could be performed on CUDA for massive speedups.
+#
+# from numba import cuda
+#
+# @cuda.jit
+# def generate_hashes_cuda(output, width):
+#     i = cuda.grid(1)
+#     if i < output.size:
+#         val = i
+#         for j in range(width):
+#             bit = (val >> (width - j - 1)) & 1
+#             output[i, j] = bit
+#
+# def generate_haploblock_hashes_cuda(n_blocks):
+#     import numpy as np
+#     output = np.zeros((n_blocks, HAPLOBLOCK_HASH_LENGTH), dtype=np.uint8)
+#     threads_per_block = 256
+#     blocks_per_grid = (n_blocks + (threads_per_block - 1)) // threads_per_block
+#     generate_hashes_cuda[blocks_per_grid, threads_per_block](output, HAPLOBLOCK_HASH_LENGTH)
+#     cuda.synchronize()
+#     return ["".join(str(bit) for bit in row) for row in output]
+# -------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
