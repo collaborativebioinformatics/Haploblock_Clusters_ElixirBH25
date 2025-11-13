@@ -1,175 +1,175 @@
+#!/usr/bin/env python3
 import os
 import sys
 import logging
 import argparse
 import pathlib
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import data_parser
 
-
-# set up logger, using inherited config, in case we get called as a module
 logger = logging.getLogger(__name__)
 
+# ----------------------------------------------------------------------
+# Utility Functions
+# ----------------------------------------------------------------------
 
-def calculate_mmseq_params(variant_counts_file):
-    """
-    Parses variant counts file with 4 columns: start, end, mean, stdev
-    mean, stdev of the number of variants per haploblock
-    calculates min identity and coverage fraction
-
-    arguments:
-    - variant_counts_file
-    returns:
-    - haploblock2min_id: dict, key=(start, end), value=min identity
-    - haploblock2cov_fraction: dict, key=(start, end), value=coverage fraction
-    """
+def calculate_mmseq_params(variant_counts_file: pathlib.Path):
     haploblock2min_id = {}
     haploblock2cov_fraction = {}
 
-    try:
-        f = open(variant_counts_file, 'r')
-    except Exception as e:
-        logger.error("Opening provided variant counts file %s: %s", variant_counts_file, e)
-        raise Exception("Cannot open provided variant counts file")
-    
-    # skip header
-    line = f.readline()
-    if not line.startswith("START\t"):
-        logging.error("variant counts file %s is headerless? expecting headers but got %s",
-                      variant_counts_file, line)
-        raise Exception("variant counts file problem")
+    with open(variant_counts_file, "r") as f:
+        header = f.readline().strip()
+        if not header.startswith("START\t"):
+            logger.error("Unexpected header in variant counts file: %s", header)
+            raise ValueError("Variant counts file missing header")
 
-    for line in f:
-        split_line = line.rstrip().split('\t')
+        for line in f:
+            split_line = line.strip().split("\t")
+            if len(split_line) != 4:
+                raise ValueError(f"Malformed line in {variant_counts_file}: {line}")
 
-        if len(split_line) != 4:
-            logger.error("variant counts file %s has bad line (not 4 tab-separated fields): %s",
-                         variant_counts_file, line)
-            raise Exception("Bad line in the variant counts file")
-        
-        (start, end, mean, stdev) = split_line
+            start, end, mean, stdev = split_line
+            hap_len = int(end) - int(start)
 
-        haploblock_len = int(end) - int(start)
-        haploblock2min_id[(start, end)] = 1 - (float(mean) / haploblock_len)
-        haploblock2cov_fraction[(start, end)] = 1 - (682 / haploblock_len)  # 682bp is the resolution of the recombination map
+            haploblock2min_id[(start, end)] = 1 - (float(mean) / hap_len)
+            haploblock2cov_fraction[(start, end)] = 1 - (682 / hap_len)
 
-    return(haploblock2min_id, haploblock2cov_fraction)
+    return haploblock2min_id, haploblock2cov_fraction
 
 
-def compute_clusters(input_fasta, out, min_seq_id, cov_fraction, cov_mode,
-                     chr, start, end):
-    """
-    Run MMSeqs2
+def compute_clusters(input_fasta: str, out: str, min_seq_id: float, cov_fraction: float, cov_mode: int,
+                     chrom: str, start: str, end: str):
+    output_prefix = pathlib.Path(out) / "clusters" / f"chr{chrom}_{start}-{end}"
+    tmp_dir = pathlib.Path(out) / "tmp"
 
-    arguments:
-    - input_fasta: merged phased fasta file for haploblock
-    """
+    cmd = [
+        "mmseqs", "easy-cluster",
+        input_fasta,
+        str(output_prefix),
+        str(tmp_dir),
+        "--min-seq-id", str(min_seq_id),
+        "-c", str(cov_fraction),
+        "--cov-mode", str(cov_mode),
+        "--remove-tmp-files", "1"
+    ]
 
-    output_prefix = os.path.join(out, "clusters", f"chr{chr}_{start}-{end}")
-
-    subprocess.run(["mmseqs", "easy-cluster",
-                    input_fasta,
-                    output_prefix,
-                    os.path.join(out, "tmp"),
-                    "--min-seq-id", str(min_seq_id),
-                    "-c", str(cov_fraction),
-                    "--cov-mode", str(cov_mode),
-                    "--remove-tmp-files", "1"],
-                    check=True)
+    logger.debug("Running: %s", " ".join(cmd))
+    subprocess.run(cmd, check=True)
 
 
-def main(boundaries_file, merged_consensus_dir, variant_counts_file, chr, out, cov_mode):
+# ----------------------------------------------------------------------
+# Main Workflow
+# ----------------------------------------------------------------------
 
-    # sanity check
-    if not os.path.exists(boundaries_file):
-        logger.error(f"File {boundaries_file} does not exist.")
-        raise Exception("File does not exist")
-    if not os.path.exists(merged_consensus_dir):
-        logger.error(f"Directory {merged_consensus_dir} does not exist.")
-        raise Exception("Directory does not exist")
-    if not os.path.exists(variant_counts_file):
-        logger.error(f"File {variant_counts_file} does not exist.")
-        raise Exception("File does not exist")
+def main(boundaries_file: pathlib.Path, merged_consensus_dir: pathlib.Path,
+         variant_counts_file: pathlib.Path, chrom: str, out_dir: pathlib.Path, cov_mode: int):
 
-    if os.path.exists(os.path.join(out, "clusters")):
-        logger.error(f"Output directory {os.path.join(out)} exists, please remove it")
-        raise Exception("Output directory exists")
-    os.mkdir(os.path.join(out, "clusters"))
+    for fpath in [boundaries_file, merged_consensus_dir, variant_counts_file]:
+        if not fpath.exists():
+            logger.error("Path not found: %s", fpath)
+            raise FileNotFoundError(f"{fpath} does not exist")
 
-    logger.info("Parsing haploblock boundaries")
+    cluster_dir = out_dir / "clusters"
+    if cluster_dir.exists():
+        logger.error("Output directory %s already exists — remove it first", cluster_dir)
+        raise FileExistsError("Output directory exists")
+
+    cluster_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "tmp").mkdir(parents=True, exist_ok=True)
+
+    logger.info("Parsing haploblock boundaries from %s", boundaries_file)
     haploblock_boundaries = data_parser.parse_haploblock_boundaries(boundaries_file)
-    logger.info("Found %i haploblocks", len(haploblock_boundaries))
+    logger.info("Found %d haploblocks", len(haploblock_boundaries))
 
     logger.info("Parsing variant counts file")
-    (haploblock2min_id, haploblock2cov_fraction) = calculate_mmseq_params(variant_counts_file)
+    haploblock2min_id, haploblock2cov_fraction = calculate_mmseq_params(variant_counts_file)
 
-    # sanity check
     if len(haploblock_boundaries) != len(haploblock2min_id):
-        logger.error("The number of haploblocks is incorrect, are you providing the right boundaries file?")
-        raise Exception("Haploblock count error")
+        raise ValueError("Haploblock count mismatch between boundaries and variant counts")
 
-    logger.info("Calculating clusters")
-    for (start, end) in haploblock_boundaries:
-        input_fasta = os.path.join(merged_consensus_dir, f"chr{chr}_region_{start}-{end}.fa")
-        min_seq_id = haploblock2min_id[(start, end)]
-        cov_fraction = haploblock2cov_fraction[(start, end)]
+    logger.info("Computing clusters with MMSeqs2 (parallel)...")
 
-        compute_clusters(input_fasta, out, min_seq_id, cov_fraction, cov_mode,
-                         chr, start, end)
+    # --- Parallel execution ---
+    max_workers = os.cpu_count() - 1 or 1
+    futures = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for (start, end) in haploblock_boundaries:
+            input_fasta = merged_consensus_dir / f"chr{chrom}_region_{start}-{end}.fa"
+            if not input_fasta.exists():
+                logger.warning("Skipping missing FASTA file: %s", input_fasta)
+                continue
+            futures.append(
+                executor.submit(
+                    compute_clusters,
+                    str(input_fasta),
+                    str(out_dir),
+                    haploblock2min_id[(start, end)],
+                    haploblock2cov_fraction[(start, end)],
+                    cov_mode,
+                    chrom, start, end
+                )
+            )
 
+        # Wait for all futures
+        for fut in as_completed(futures):
+            fut.result()  # propagate exceptions if any
+
+    logger.info("All clusters computed successfully.")
+
+
+# ----------------------------------------------------------------------
+# CUDA perspective
+# ----------------------------------------------------------------------
+# 💡 The current MMseqs2 command-line tool does not natively use CUDA.
+#     For very large haploblocks, one could consider:
+#     - Using GPU-accelerated alignment tools (e.g., cuBLAST, GPU-MMseqs)
+#     - Offloading compute-intensive distance calculations to GPU via PyTorch or CuPy
+#     - Preprocessing sequences in batches on GPU before clustering
+#     These would require rewriting `compute_clusters` or replacing MMseqs2 backend.
+
+# ----------------------------------------------------------------------
+# Entry Point
+# ----------------------------------------------------------------------
 
 if __name__ == "__main__":
     script_name = os.path.basename(sys.argv[0])
-    # configure logging, sub-modules will inherit this config
-    logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.DEBUG)
-    # set up logger: we want script name rather than 'root'
+
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=logging.INFO
+    )
     logger = logging.getLogger(script_name)
 
     parser = argparse.ArgumentParser(
         prog=script_name,
-        description="TODO"
+        description="Cluster haploblock consensus sequences using MMseqs2"
     )
-    
-    parser.add_argument('--boundaries_file',
-                        help='Path to boundaries file generated from Halldorsson et al., 2019',
-                        type=pathlib.Path,
-                        required=True)
-    parser.add_argument('--merged_consensus_dir',
-                        help='Path to directory with consensus haploblock phased sequences fasta files per haploblock',
-                        type=pathlib.Path,
-                        required=True)
-    parser.add_argument('--variant_counts',
-                        help='Path to file with the mean and average of the number of variants per haploblock',
-                        type=pathlib.Path,
-                        required=True)
-    parser.add_argument('--chr',
-                        help='chromosome',
-                        type=str,
-                        required=True)
-    parser.add_argument('--out',
-                        help='Path to output directory for clusters',
-                        type=pathlib.Path,
-                        required=True)
-    parser.add_argument('--cov_mode',
-                        help='coverage mode (optional)',
-                        type=int,
-                        required=False,
-                        default="0")
+
+    parser.add_argument("--boundaries_file", type=pathlib.Path, required=True,
+                        help="Path to haploblock boundaries file")
+    parser.add_argument("--merged_consensus_dir", type=pathlib.Path, required=True,
+                        help="Directory with consensus FASTA files per haploblock")
+    parser.add_argument("--variant_counts", type=pathlib.Path, required=True,
+                        help="File with mean and stdev variant counts per haploblock")
+    parser.add_argument("--chr", type=str, required=True, help="Chromosome ID")
+    parser.add_argument("--out", type=pathlib.Path, required=True, help="Output directory for clusters")
+    parser.add_argument("--cov_mode", type=int, default=0, help="Coverage mode for MMSeqs2")
 
     args = parser.parse_args()
 
     try:
-        main(boundaries_file=args.boundaries_file,
-             merged_consensus_dir=args.merged_consensus_dir,
-             variant_counts_file=args.variant_counts,
-             chr=args.chr,
-             out=args.out,
-             cov_mode=args.cov_mode)
-
+        main(
+            boundaries_file=args.boundaries_file,
+            merged_consensus_dir=args.merged_consensus_dir,
+            variant_counts_file=args.variant_counts,
+            chrom=args.chr,
+            out_dir=args.out,
+            cov_mode=args.cov_mode
+        )
     except Exception as e:
-        # details on the issue should be in the exception name, print it to stderr and die
-        sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")
+        sys.stderr.write(f"ERROR in {script_name}: {e}\n")
         sys.exit(1)
+

@@ -1,44 +1,60 @@
-#!/bin/bash
-
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 <input_directory> <output_directory>"
-    exit 1
-fi
+#!/usr/bin/env bash
+set -euo pipefail
 
 input_dir="$1"
 output_dir="$2"
+clean_flag="${3:-}"
 
-# Check directories
-if [ ! -d "$input_dir" ]; then
-    echo "Error: input directory '$input_dir' does not exist."
-    exit 1
-fi
+[ ! -d "$input_dir" ] && { echo "Input dir not found"; exit 1; }
 
+[ -d "$output_dir" ] && [ "$clean_flag" = "--clean" ] && rm -rf "$output_dir"
 mkdir -p "$output_dir"
 
-for f in "$input_dir"/*.fasta "$input_dir"/*.fa; do
-    [ -e "$f" ] || continue
+jobs=$(( $(nproc) - 1 ))
+jobs=$(( jobs > 0 ? jobs : 1 ))
 
-    # Remove extension
-    name_noext=$(basename "$f" | sed 's/\.[^.]*$//')
+echo "Starting FASTA merge with $jobs jobs..."
 
-    # Extract region from filename (e.g., chr6_region_711055-761032)
-    region=$(echo "$name_noext" | grep -oE 'chr[0-9XYM]+_region_[0-9]+-[0-9]+')
-
-    # Fallback if no region found
-    [ -z "$region" ] && region="unknown_region"
-
-    # Output file for this region
+merge_region() {
+    local region="$1"
+    local output_dir="$2"
+    shift 2
+    local files=("$@")
     output="${output_dir}/${region}.fa"
+    > "$output"
 
-    # Extract header from filename
-    header=$(echo "$name_noext" | grep -oE '[^_]+_chr[0-9XYM]+_region_[0-9]+-[0-9]+_hap[0-9]+')
-    [ -z "$header" ] && header="$name_noext"
+    for f in "${files[@]}"; do
+        name_noext=$(basename "$f" | sed -E 's/(\.vcf)?\.(fa|fasta)$//')
+        header=$(echo "$name_noext" | grep -oE '[^_]+_chr[0-9XYM]+_region_[0-9]+-[0-9]+_hap[0-9]+' || true)
+        [ -z "$header" ] && header="$name_noext"
+        {
+            echo ">$header"
+            grep -v "^>" "$f"
+        } >> "$output"
+    done
+}
 
-    echo ">$header" >> "$output"
-    grep -v "^>" "$f" >> "$output"
+export -f merge_region
+
+# --- Prepare a list of regions with files ---
+tmp_file=$(mktemp)
+while IFS= read -r f; do
+    name_noext=$(basename "$f" | sed -E 's/(\.vcf)?\.(fa|fasta)$//')
+    region=$(echo "$name_noext" | grep -oE 'chr[0-9XYM]+_region_[0-9]+-[0-9]+' || true)
+    [ -z "$region" ] && region="unknown_region"
+    echo "$region $f" >> "$tmp_file"
+done < <(find "$input_dir" -type f \( -name "*.fa" -o -name "*.fasta" \) | sort)
+
+# --- Merge per region ---
+cut -d' ' -f1 "$tmp_file" | sort -u | while read -r region; do
+    files=($(awk -v r="$region" '$1==r {print $2}' "$tmp_file"))
+    merge_region "$region" "$output_dir" "${files[@]}" &
+    # Control max parallel jobs
+    while (( $(jobs -r | wc -l) >= jobs )); do sleep 0.1; done
 done
 
-tar -zcvf "${output_dir}.tar.gz" "${output_dir}"
+wait
+rm "$tmp_file"
 
-echo "✅ One FASTA per region written to: ${output_dir}"
+echo "Merge complete."
+
