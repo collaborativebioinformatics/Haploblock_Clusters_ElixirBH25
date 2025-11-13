@@ -57,14 +57,16 @@ RUN wget https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz -O /opt/mmseqs-linux
 # Clone your repository and set up Python environment
 # -------------------------------------------------------------------
 WORKDIR /app
-RUN git clone https://github.com/collaborativebioinformatics/Haploblock_Clusters_ElixirBH25.git
+#RUN git clone https://github.com/collaborativebioinformatics/Haploblock_Clusters_ElixirBH25.git
+RUN git clone https://github.com/MauricioMoldes/Haploblock_Clusters_ElixirBH25.git
+
 
 # Set repo directory as working directory
 WORKDIR /app/Haploblock_Clusters_ElixirBH25
 
 # Copy requirements.txt and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+#COPY requirements.txt .
+#RUN pip install --no-cache-dir -r requirements.txt
 
 # -------------------------------------------------------------------
 # Download data (optional layer)
