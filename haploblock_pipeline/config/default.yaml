@@ -1,0 +1,31 @@
+# ============================================================
+# Haploblocks Pipeline Configuration
+# ============================================================
+# This configuration file defines all input paths,
+# chromosome settings, and parallelization parameters
+# for the modular haploblock pipeline.
+# ============================================================
+
+pipeline:
+  step: all          # Options: 1, 2, 3, 4, 5, or "all"
+  threads: auto      # Number of threads (auto = use CPU count - 1)
+
+data:
+  recombination_file: data/Halldorsson2019/aau1043_datas3
+  boundaries_file: data/haploblock_boundaries_chr6_TNFa.tsv
+  vcf: data/ALL.chr6.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz
+  ref: data/chr6.fa.gz
+  chr_map: data/chr_map
+  variants: data/variants_of_interest.txt
+
+outputs:
+  out_dir: out_dir/
+  merged_consensus_dir: out_dir/TNFa/haploblock_phased_seq_merged
+  variant_counts: out_dir/TNFa/variant_counts.tsv
+  clusters: out_dir/TNFa/clusters/chr6_31480875-31598421_cluster.tsv
+  variant_hashes: out_dir/TNFa/variant_hashes.tsv
+  haploblock_hashes: out_dir/haploblock_hashes_chr6.tsv
+
+chromosome:
+  number: 6
+
