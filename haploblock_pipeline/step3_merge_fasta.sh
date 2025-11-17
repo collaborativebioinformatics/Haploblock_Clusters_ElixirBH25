@@ -64,3 +64,21 @@ rm "$tmp_file"
 
 echo "Merge complete."
 
+# ------------------------------------------------------------------
+# Fix permissions: make all merged FASTA files readable
+# ------------------------------------------------------------------
+
+# Ensure the merged FASTA is readable
+chmod 777 data/module/out_dir/TNFa/haploblock_phased_seq_merged/*.fa
+
+# Ensure the tmp folder exists and is writable
+mkdir -p data/module/out_dir/TNFa/tmp
+chmod 777 data/module/out_dir/TNFa/tmp
+
+# Ensure the clusters output folder is creatable
+mkdir -p data/module/out_dir/TNFa/clusters
+chmod 777 data/module/out_dir/TNFa/clusters
+
+
+echo "Permissions fixed."
+
