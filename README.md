@@ -176,6 +176,9 @@ python clusters.py \
 
 This uses previously generated haploblock phased sequences (--merged_consensus_dir) and variant counts (--variant_counts), based on which it calculates MMSeqs parameters: min sequence identify and coverage fraction. For each haploblock it generates a cluster TSV file in directory **out_dir/clusters/**.
 
+### 3a. If you are not interested in SNPs, and only background haploblock clusters, you can stop here.
+
+#### 3a1. If you are interested in comparing these results to other groups of sequences, you can pull the cluster representatives from the merged fasta file.
 
 ### 4. Generate variant hashes
 
