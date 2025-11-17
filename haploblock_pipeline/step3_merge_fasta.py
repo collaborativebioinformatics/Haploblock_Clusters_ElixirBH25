@@ -40,4 +40,3 @@ def run(input_dir: pathlib.Path, output_dir: pathlib.Path, threads: int | None =
         sys.exit(1)
 
     logger.info("FASTA merge completed successfully.")
-

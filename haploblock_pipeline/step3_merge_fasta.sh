@@ -11,7 +11,7 @@ threads="${4:-}"      # optional number of threads
 [ -d "$output_dir" ] && [ "$clean_flag" = "--clean" ] && rm -rf "$output_dir"
 mkdir -p "$output_dir"
 
-# Determine number of jobs
+# Determine number of parallel jobs
 if [[ -z "$threads" || "$threads" -le 0 ]]; then
     jobs=$(( $(nproc) - 1 ))
     jobs=$(( jobs > 0 ? jobs : 1 ))
@@ -26,8 +26,11 @@ merge_region() {
     local output_dir="$2"
     shift 2
     local files=("$@")
-    output="${output_dir}/${region}.fa"
-    > "$output"
+    local output="${output_dir}/${region}.fa"
+    local tmp_output="${output}.tmp"
+
+    # Start with empty temp file
+    > "$tmp_output"
 
     for f in "${files[@]}"; do
         name_noext=$(basename "$f" | sed -E 's/(\.vcf)?\.(fa|fasta)$//')
@@ -36,8 +39,13 @@ merge_region() {
         {
             echo ">$header"
             grep -v "^>" "$f"
-        } >> "$output"
+        } >> "$tmp_output"
     done
+
+    # Move temp file into place
+    mv "$tmp_output" "$output"
+    # Ensure full read/write/execute permissions for everyone
+    chmod 777 "$output"
 }
 
 export -f merge_region
@@ -62,23 +70,5 @@ done
 wait
 rm "$tmp_file"
 
-echo "Merge complete."
-
-# ------------------------------------------------------------------
-# Fix permissions: make all merged FASTA files readable
-# ------------------------------------------------------------------
-
-# Ensure the merged FASTA is readable
-chmod 777 data/module/out_dir/TNFa/haploblock_phased_seq_merged/*.fa
-
-# Ensure the tmp folder exists and is writable
-mkdir -p data/module/out_dir/TNFa/tmp
-chmod 777 data/module/out_dir/TNFa/tmp
-
-# Ensure the clusters output folder is creatable
-mkdir -p data/module/out_dir/TNFa/clusters
-chmod 777 data/module/out_dir/TNFa/clusters
-
-
-echo "Permissions fixed."
+echo "All FASTA files merged and permissions set to 777."
 
