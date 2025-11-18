@@ -4,7 +4,7 @@ import sys
 import logging
 import pathlib
 import subprocess
-from haploblock_pipeline.utils.logging import setup_logger
+from utils.logging import setup_logger
 
 logger = setup_logger()
 
@@ -23,7 +23,7 @@ def run(input_dir: pathlib.Path, output_dir: pathlib.Path, threads: int | None =
 
     cmd = [
         "bash",
-        str(pathlib.Path(__file__).parent / "merge_fasta_per_region.sh"),
+        str(pathlib.Path(__file__).parent / "step3_merge_fasta.sh"),
         str(input_dir),
         str(output_dir),
     ]

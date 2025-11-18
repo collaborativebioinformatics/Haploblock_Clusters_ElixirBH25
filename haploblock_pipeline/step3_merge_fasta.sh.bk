@@ -3,9 +3,8 @@ set -euo pipefail
 
 input_dir="$1"
 output_dir="$2"
-clean_flag="${3:-}"
+clean_flag="${3:-}"   # optional --clean
 threads="${4:-}"      # optional number of threads
-
 
 [ ! -d "$input_dir" ] && { echo "Input dir not found"; exit 1; }
 
@@ -27,8 +26,11 @@ merge_region() {
     local output_dir="$2"
     shift 2
     local files=("$@")
-    output="${output_dir}/${region}.fa"
-    > "$output"
+    local output="${output_dir}/${region}.fa"
+    local tmp_output="${output}.tmp"
+
+    # Start with empty temp file
+    > "$tmp_output"
 
     for f in "${files[@]}"; do
         name_noext=$(basename "$f" | sed -E 's/(\.vcf)?\.(fa|fasta)$//')
@@ -37,8 +39,13 @@ merge_region() {
         {
             echo ">$header"
             grep -v "^>" "$f"
-        } >> "$output"
+        } >> "$tmp_output"
     done
+
+    # Move temp file into place
+    mv "$tmp_output" "$output"
+    # Ensure full read/write/execute permissions for everyone
+    chmod 777 "$output"
 }
 
 export -f merge_region
@@ -63,12 +70,5 @@ done
 wait
 rm "$tmp_file"
 
-echo "Merge complete."
-
-##########################
-## Permissions 
-##########################
-
-chmod 644 "$output_dir"/*.fa
-
+echo "All FASTA files merged and permissions set to 777."
 

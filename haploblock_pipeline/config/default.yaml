@@ -22,7 +22,6 @@ data:
 outputs:
   out_dir: out_dir/
 
-  # These paths were previously hardcoded in main.py
   step2_out: out_dir/TNFa
   step3_input: out_dir/TNFa/tmp/consensus_fasta
   step3_output: out_dir/TNFa/haploblock_phased_seq_merged
