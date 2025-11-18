@@ -69,6 +69,6 @@ echo "Merge complete."
 ## Permissions 
 ##########################
 
+sleep 200
+
 chmod 644 "$output_dir"/*.fa
-
-
