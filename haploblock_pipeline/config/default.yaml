@@ -7,8 +7,8 @@
 # ============================================================
 
 pipeline:
-  step: all          # Options: 1, 2, 3, 4, 5, or "all"
-  threads: auto      # Number of threads (auto = use CPU count - 1)
+  step: all
+  threads: auto
 
 data:
   recombination_file: data/Halldorsson2019/aau1043_datas3
@@ -17,10 +17,16 @@ data:
   ref: data/chr6.fa.gz
   chr_map: data/chr_map
   variants: data/variants_of_interest.txt
-  samples_file: null   # <-- optional, can be omitted or set to null
+  samples_file: null
 
 outputs:
   out_dir: out_dir/
+
+  # These paths were previously hardcoded in main.py
+  step2_out: out_dir/TNFa
+  step3_input: out_dir/TNFa/tmp/consensus_fasta
+  step3_output: out_dir/TNFa/haploblock_phased_seq_merged
+
   merged_consensus_dir: out_dir/TNFa/haploblock_phased_seq_merged
   variant_counts: out_dir/TNFa/variant_counts.tsv
   clusters: out_dir/TNFa/clusters/chr6_31480875-31598421_cluster.tsv
