@@ -212,9 +212,9 @@ This generates variants hashes, 64-character strings of 0/1s. Each individual ha
 The output is a TSV file (with two columns: INDIVIDUAL HASH) is out_dir/individual_hashes.tsv.
 
 
-## Model
+## Example Model
 
-TBD
+Heres an example of how one could take binary strings and feed them into a vector based model with initial weighting...
 
 
 # Results
